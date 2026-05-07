@@ -9,25 +9,25 @@ A collection of high-performance Raycast for Windows extensions leveraging the W
 ### NPU Image Editor (npu-image-editor-ext)
 Advanced image editing powered by the Microsoft.Windows.AI.Imaging APIs.
 - ✅ **Background Removal**: Functional. High-quality foreground extraction using the NPU.
-- 🛠️ **Super Resolution**: Planned. High-fidelity image upscaling (2x, 4x, 8x).
-- 🛠️ **Text Extraction (OCR)**: Planned. Local text extraction from images.
-- 🛠️ **Sticker Maker**: Planned. Automatic background removal and cropping to subjects for WebP stickers.
-- 🛠️ **Modify Image**: Scaffolded. All-in-one command UI for image tools.
+- 🛠️ **Super Resolution**: Planned.
+- 🛠️ **Text Extraction (OCR)**: Planned.
+- 🛠️ **Sticker Maker**: Planned.
+- 🛠️ **Modify Image**: UI scaffolded.
 
 ### NPU Awake (npu-awake-ext)
-Prevents your PC from sleeping using a dedicated background worker and the `SetThreadExecutionState` API.
-- ✅ **Indefinite/Timed Awake**: Functional. Core keep-awake logic implemented in C# keeper.
-- 🛠️ **Raycast UI**: Scaffolded. Commands for Awake, Awake For..., and Awake Until.
+Prevents your PC from sleeping using a dedicated background worker.
+- 🛠️ **Keep-Awake Logic**: C# core implemented; Raycast UI integration pending.
+- 🛠️ **Timed/Scheduled Awake**: Planned (UI scaffolded).
 
 ### NPU Notes (npu-notes-ext)
-Local-first, NPU-integrated note-taking with automated organization.
-- 🛠️ **Smart Add Note**: Planned. Phi-Silica powered grammar cleanup and classification.
-- 🛠️ **Browse/Search Notes**: Planned. Organization and semantic search of local Markdown notes.
+Local-first note-taking with automated organization.
+- 🛠️ **Smart Add Note**: Planned.
+- 🛠️ **Browse/Search Notes**: Planned.
 
 ### NPU Text Tools (npu-text-tools-ext)
 Local text refinement and rewriting powered by Phi-Silica (NPU).
-- 🛠️ **Phi-Silica Rewriting**: Planned. Local implementations for Grammar Fix, Tone Shifting, Summarization (Bullet Points), and Simplify.
-- 🛠️ **Custom Rewrite**: Planned. User-guided text transformation.
+- 🛠️ **Phi-Silica Rewriting**: Planned.
+- 🛠️ **Custom Rewrite**: Planned.
 
 ## Getting Started
 
