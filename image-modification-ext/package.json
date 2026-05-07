@@ -1,0 +1,51 @@
+{
+    "$schema": "https://www.raycast.com/schemas/extension.json",
+    "name": "image-modification-ext",
+    "title": "Image Modification",
+    "description": "Convert, resize, and optimize images on Windows",
+    "version": "1.0.0",
+    "icon": "icon.png",
+    "author": "dfs",
+    "categories": [
+        "Media",
+        "Developer Tools"
+    ],
+    "license": "MIT",
+    "platforms": [
+        "Windows"
+    ],
+    "commands": [
+        {
+            "name": "modify-image",
+            "title": "Modify Selected Images",
+            "description": "Apply transformations to images selected in File Explorer",
+            "mode": "view"
+        }
+    ],
+    "dependencies": {
+        "@img/sharp-win32-x64": "^0.34.5",
+        "@jimp/wasm-webp": "^1.6.1",
+        "@raycast/api": "^1.40.0",
+        "@raycast/utils": "^1.4.8",
+        "gifwrap": "^0.10.1",
+        "imagemin": "^9.0.1",
+        "imagemin-webp": "^8.0.0",
+        "jimp": "^1.6.1",
+        "node-webpmux": "^3.2.1"
+    },
+    "devDependencies": {
+        "@raycast/eslint-config": "^1.0.6",
+        "@types/node": "18.18.4",
+        "@types/react": "19.0.10",
+        "eslint": "^8.51.0",
+        "prettier": "^3.0.3",
+        "typescript": "^5.2.2"
+    },
+    "scripts": {
+        "build": "ray build -e dist",
+        "dev": "ray develop",
+        "fix-lint": "ray lint --fix",
+        "lint": "ray lint",
+        "publish": "ray publish"
+    }
+}
