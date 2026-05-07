@@ -70,7 +70,6 @@ The output file is saved next to the input with a `_no_bg.png` suffix. The flow:
 
 - **Framework**: Bridge Pattern — defined and working
 - **Active Extensions**:
-  - `image-modification-ext`: Universal image editor (Jimp, no NPU required)
   - `npu-image-editor-ext`: NPU-accelerated editor (Background Removal via `ImageForegroundExtractor`)
 - **Roadmap** (see `COPILOT_CONTEXT.md`): Super Resolution (`ImageScaler`), OCR, Phi Silica text features
 - **Primary Reference**: `COPILOT_CONTEXT.md` for technical vision; `NPU_INFO.md` for API notes

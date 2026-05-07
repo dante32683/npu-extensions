@@ -9,10 +9,6 @@ NPU-accelerated image editing tools.
 - **Background Removal**: Uses `ImageForegroundExtractor` (NPU) for high-quality, local background removal.
 - **Architecture**: Leverages a C# Bridge (`NpuBridge.exe`) to interface with WinRT APIs.
 
-### 2. Image Modification (`image-modification-ext`)
-Universal image editor using standard Node.js libraries (Jimp).
-- **Features**: Basic modifications that don't require NPU acceleration.
-
 ## Getting Started
 
 ### Prerequisites
@@ -34,8 +30,6 @@ Universal image editor using standard Node.js libraries (Jimp).
 3. **Install Dependencies**:
    ```powershell
    cd npu-image-editor-ext
-   npm install
-   cd ../image-modification-ext
    npm install
    ```
 
