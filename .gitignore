@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+bin/
+obj/
+publish/
+
+# Build outputs
+dist/
+assets/bin/
+*.exe
+*.dll
+*.pdb
+*.json
+!package.json
+!tsconfig.json
+!*.deps.json
+!*.runtimeconfig.json
+# Note: assets/bin contains the NPU Bridge which is required for the extension, 
+# but usually we don't want to commit the whole self-contained bundle if it's large.
+# However, for Raycast extensions, assets are often bundled.
+# Given the project context, assets/bin contains many DLLs.
+# I will exclude assets/bin for now but the user might want to include it later.
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
