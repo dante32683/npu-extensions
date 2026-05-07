@@ -12,15 +12,22 @@ assets/bin/
 *.pdb
 *.json
 !package.json
+!package-lock.json
 !tsconfig.json
 !*.deps.json
 !*.runtimeconfig.json
+*.nupkg
+*.snupkg
+*.user
+*.suo
+TestResults/
 
 # Planning and Instruction Documents (Keep local only)
 CLAUDE.md
 GEMINI.md
 COPILOT_CONTEXT.md
 NPU_INFO.md
+FEATURE_PLAN.md
 
 # IDEs
 .vscode/

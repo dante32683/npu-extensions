@@ -1,0 +1,57 @@
+{
+    "$schema": "https://www.raycast.com/schemas/extension.json",
+    "name": "npu-notes",
+    "title": "NPU Smart Notes",
+    "description": "Paste a sloppy note and Phi-Silica formats and files it automatically.",
+    "icon": "extension-icon.png",
+    "author": "user",
+    "license": "MIT",
+    "commands": [
+        {
+            "name": "add-note",
+            "title": "Add Note",
+            "description": "Write a sloppy note - Phi formats and files it.",
+            "mode": "view"
+        },
+        {
+            "name": "browse-notes",
+            "title": "Browse Notes",
+            "description": "List and filter saved notes by category.",
+            "mode": "view"
+        },
+        {
+            "name": "search-notes",
+            "title": "Search Notes",
+            "description": "Search notes by keyword or meaning.",
+            "mode": "view"
+        }
+    ],
+    "preferences": [
+        {
+            "name": "notesFolder",
+            "title": "Notes Folder",
+            "description": "Where your notes are saved. Defaults to Documents\\RaycastNotes.",
+            "type": "directory",
+            "required": false,
+            "default": ""
+        }
+    ],
+    "dependencies": {
+        "@raycast/api": "^1.71.0"
+    },
+    "devDependencies": {
+        "@raycast/eslint-config": "^1.0.8",
+        "@types/node": "20.8.10",
+        "@types/react": "19.0.10",
+        "eslint": "^8.51.0",
+        "prettier": "^3.0.3",
+        "typescript": "^5.2.2"
+    },
+    "scripts": {
+        "build": "ray build -e dist",
+        "dev": "ray develop",
+        "fix-lint": "ray lint --fix",
+        "lint": "ray lint",
+        "publish": "npx @raycast/api@latest publish"
+    }
+}

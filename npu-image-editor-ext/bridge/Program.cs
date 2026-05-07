@@ -20,7 +20,7 @@ namespace NpuBridge
         {
             if (args.Length < 2)
             {
-                Console.WriteLine(JsonSerializer.Serialize(new { status = "error", message = "Usage: NpuBridge.exe <command> <inputPath>" }));
+                Console.WriteLine(JsonSerializer.Serialize(new { status = "error", message = "Usage: NpuBridge.exe <command> <inputPath> [options]" }));
                 return;
             }
 
@@ -34,6 +34,15 @@ namespace NpuBridge
                     case "remove-background":
                         await RemoveBackground(inputPath);
                         break;
+                    case "super-resolution":
+                        WriteNotImplemented("super-resolution", "Usage: NpuBridge.exe super-resolution <inputPath> <scaleFactor>");
+                        break;
+                    case "ocr":
+                        WriteNotImplemented("ocr", "Usage: NpuBridge.exe ocr <inputPath>");
+                        break;
+                    case "make-sticker":
+                        WriteNotImplemented("make-sticker", "Usage: NpuBridge.exe make-sticker <inputPath>");
+                        break;
                     default:
                         Console.WriteLine(JsonSerializer.Serialize(new { status = "error", message = $"Unknown command: {command}" }));
                         break;
@@ -44,6 +53,17 @@ namespace NpuBridge
                 Console.Error.WriteLine($"[NpuBridge] {ex}");
                 Console.WriteLine(JsonSerializer.Serialize(new { status = "error", message = ex.Message }));
             }
+        }
+
+        static void WriteNotImplemented(string command, string usage)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(new
+            {
+                status = "error",
+                command,
+                usage,
+                message = "Bridge command scaffolded but not implemented yet."
+            }));
         }
 
         static async Task RemoveBackground(string inputPath)

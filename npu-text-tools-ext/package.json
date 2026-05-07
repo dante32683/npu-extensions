@@ -1,0 +1,65 @@
+{
+    "$schema": "https://www.raycast.com/schemas/extension.json",
+    "name": "npu-text-tools",
+    "title": "NPU Text Tools",
+    "description": "On-device text rewriting and cleanup using Phi-Silica via Windows Copilot Runtime.",
+    "icon": "extension-icon.png",
+    "author": "user",
+    "license": "MIT",
+    "commands": [
+        {
+            "name": "fix-grammar",
+            "title": "Fix Grammar",
+            "description": "Correct spelling and grammar without changing meaning.",
+            "mode": "view"
+        },
+        {
+            "name": "make-formal",
+            "title": "Make Formal",
+            "description": "Rewrite text in a professional tone.",
+            "mode": "view"
+        },
+        {
+            "name": "make-concise",
+            "title": "Make Concise",
+            "description": "Shorten text to its essential points.",
+            "mode": "view"
+        },
+        {
+            "name": "bullet-points",
+            "title": "Bullet Points",
+            "description": "Convert prose into a bullet point list.",
+            "mode": "view"
+        },
+        {
+            "name": "simplify",
+            "title": "Simplify",
+            "description": "Rewrite in plain, easy-to-understand language.",
+            "mode": "view"
+        },
+        {
+            "name": "custom-rewrite",
+            "title": "Custom Rewrite",
+            "description": "Describe how you want the text rewritten.",
+            "mode": "view"
+        }
+    ],
+    "dependencies": {
+        "@raycast/api": "^1.71.0"
+    },
+    "devDependencies": {
+        "@raycast/eslint-config": "^1.0.8",
+        "@types/node": "20.8.10",
+        "@types/react": "19.0.10",
+        "eslint": "^8.51.0",
+        "prettier": "^3.0.3",
+        "typescript": "^5.2.2"
+    },
+    "scripts": {
+        "build": "ray build -e dist",
+        "dev": "ray develop",
+        "fix-lint": "ray lint --fix",
+        "lint": "ray lint",
+        "publish": "npx @raycast/api@latest publish"
+    }
+}

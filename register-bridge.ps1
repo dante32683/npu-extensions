@@ -1,23 +1,46 @@
 $baseDir = $PSScriptRoot
-$binDir = Join-Path $baseDir "npu-image-editor-ext\assets\bin"
-$manifestSource = Join-Path $baseDir "npu-image-editor-ext\bridge\Package.appxmanifest"
-$manifestDest = Join-Path $binDir "AppxManifest.xml"
 
-# 1. Copy manifest to bin folder (renamed to AppxManifest.xml for standard registration)
-if (Test-Path $manifestSource) {
+$bridges = @(
+    @{
+        Name = "NPU Image Editor Bridge"
+        Bin = "npu-image-editor-ext\assets\bin"
+        Manifest = "npu-image-editor-ext\bridge\Package.appxmanifest"
+    },
+    @{
+        Name = "NPU Text Tools Bridge"
+        Bin = "npu-text-tools-ext\assets\bin"
+        Manifest = "npu-text-tools-ext\bridge\Package.appxmanifest"
+    },
+    @{
+        Name = "NPU Notes Bridge"
+        Bin = "npu-notes-ext\assets\bin"
+        Manifest = "npu-notes-ext\bridge\Package.appxmanifest"
+    }
+)
+
+foreach ($bridge in $bridges) {
+    $binDir = Join-Path $baseDir $bridge.Bin
+    $manifestSource = Join-Path $baseDir $bridge.Manifest
+    $manifestDest = Join-Path $binDir "AppxManifest.xml"
+
+    if (-not (Test-Path $manifestSource)) {
+        Write-Host "Skipping $($bridge.Name): manifest missing at $manifestSource" -ForegroundColor Yellow
+        continue
+    }
+
+    if (-not (Test-Path $binDir)) {
+        Write-Host "Skipping $($bridge.Name): build output missing at $binDir" -ForegroundColor Yellow
+        continue
+    }
+
     Copy-Item -Path $manifestSource -Destination $manifestDest -Force
-} else {
-    Write-Host "Error: Package.appxmanifest not found at $manifestSource" -ForegroundColor Red
-    exit
-}
+    Write-Host "Registering $($bridge.Name) sparse package identity..." -ForegroundColor Cyan
 
-# 2. Register via PowerShell (Bypasses the .exe startup error)
-Write-Host "Registering NPU Bridge Sparse Package identity via PowerShell..." -ForegroundColor Cyan
-
-try {
-    Add-AppxPackage -Register $manifestDest -ExternalLocation $binDir -ForceApplicationShutdown -ErrorAction Stop
-    Write-Host "Identity registered successfully! NPU features should now be unlocked." -ForegroundColor Green
-} catch {
-    Write-Host "Registration failed: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "Ensure Developer Mode is enabled and you are running as Administrator." -ForegroundColor Yellow
+    try {
+        Add-AppxPackage -Register $manifestDest -ExternalLocation $binDir -ForceApplicationShutdown -ErrorAction Stop
+        Write-Host "Registered $($bridge.Name)." -ForegroundColor Green
+    } catch {
+        Write-Host "Registration failed for $($bridge.Name): $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Ensure Developer Mode is enabled and you are running as Administrator." -ForegroundColor Yellow
+    }
 }

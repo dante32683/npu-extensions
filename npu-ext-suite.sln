@@ -1,0 +1,68 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "npu-awake-ext", "npu-awake-ext", "{304F94CF-A050-BE9D-56B9-05C132CECFD1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "npu-image-editor-ext", "npu-image-editor-ext", "{17B3CCD2-8D9A-EA62-4960-276D244B4678}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "npu-notes-ext", "npu-notes-ext", "{57CF4101-5E84-554A-6314-517BEDADCE44}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "npu-text-tools-ext", "npu-text-tools-ext", "{587A8751-A516-DBEE-3B4E-AF4C476E2F68}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "keeper", "keeper", "{B3868941-D700-63AE-B685-4D37F08943C8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AwakeKeeper", "npu-awake-ext\keeper\AwakeKeeper.csproj", "{1FBE0DB0-23BB-D120-F971-E3675596E6EE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "bridge", "bridge", "{A1E568A1-36D3-1AF1-E7ED-17A753588F5F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpuBridge", "npu-image-editor-ext\bridge\NpuBridge.csproj", "{7E855D64-B71D-E018-4FDE-2DDB729F6657}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "bridge", "bridge", "{7B028B5C-2BF0-E726-8E1D-C8DF2747AF44}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpuBridge", "npu-notes-ext\bridge\NpuBridge.csproj", "{33A6215C-536C-A709-D240-DC7C97ECB3D9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "bridge", "bridge", "{80509F32-1BA6-A525-525C-8E447E2E29F1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpuBridge", "npu-text-tools-ext\bridge\NpuBridge.csproj", "{9B7034AB-F674-A91C-FBE7-0705CA94EE78}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1FBE0DB0-23BB-D120-F971-E3675596E6EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1FBE0DB0-23BB-D120-F971-E3675596E6EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1FBE0DB0-23BB-D120-F971-E3675596E6EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1FBE0DB0-23BB-D120-F971-E3675596E6EE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E855D64-B71D-E018-4FDE-2DDB729F6657}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E855D64-B71D-E018-4FDE-2DDB729F6657}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E855D64-B71D-E018-4FDE-2DDB729F6657}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E855D64-B71D-E018-4FDE-2DDB729F6657}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33A6215C-536C-A709-D240-DC7C97ECB3D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33A6215C-536C-A709-D240-DC7C97ECB3D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33A6215C-536C-A709-D240-DC7C97ECB3D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33A6215C-536C-A709-D240-DC7C97ECB3D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B7034AB-F674-A91C-FBE7-0705CA94EE78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B7034AB-F674-A91C-FBE7-0705CA94EE78}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B7034AB-F674-A91C-FBE7-0705CA94EE78}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B7034AB-F674-A91C-FBE7-0705CA94EE78}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B3868941-D700-63AE-B685-4D37F08943C8} = {304F94CF-A050-BE9D-56B9-05C132CECFD1}
+		{1FBE0DB0-23BB-D120-F971-E3675596E6EE} = {B3868941-D700-63AE-B685-4D37F08943C8}
+		{A1E568A1-36D3-1AF1-E7ED-17A753588F5F} = {17B3CCD2-8D9A-EA62-4960-276D244B4678}
+		{7E855D64-B71D-E018-4FDE-2DDB729F6657} = {A1E568A1-36D3-1AF1-E7ED-17A753588F5F}
+		{7B028B5C-2BF0-E726-8E1D-C8DF2747AF44} = {57CF4101-5E84-554A-6314-517BEDADCE44}
+		{33A6215C-536C-A709-D240-DC7C97ECB3D9} = {7B028B5C-2BF0-E726-8E1D-C8DF2747AF44}
+		{80509F32-1BA6-A525-525C-8E447E2E29F1} = {587A8751-A516-DBEE-3B4E-AF4C476E2F68}
+		{9B7034AB-F674-A91C-FBE7-0705CA94EE78} = {80509F32-1BA6-A525-525C-8E447E2E29F1}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6E4E3FFB-C6AE-4C53-8188-4A09A2FD1914}
+	EndGlobalSection
+EndGlobal
