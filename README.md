@@ -1,40 +1,33 @@
 # NPU Extension Suite for Raycast (Windows)
 
-A collection of high-performance Raycast for Windows extensions leveraging the Windows Copilot Runtime and NPU (Neural Processing Unit). These tools provide local, private, and fast AI capabilities directly on your PC.
+A collection of high-performance Raycast for Windows extensions leveraging the Windows Copilot Runtime and NPU (Neural Processing Unit). These tools aim to provide local, private, and fast AI capabilities directly on your PC.
+
+> **Status**: This project is currently in active development. While the extension UI and bridge infrastructure are scaffolded, many NPU-powered features are currently on the roadmap.
 
 ## Extensions
 
 ### NPU Image Editor (npu-image-editor-ext)
 Advanced image editing powered by the Microsoft.Windows.AI.Imaging APIs.
-- **Background Removal**: Intelligent foreground extraction using the NPU.
-- **Super Resolution**: Upscale images (2x, 4x, 8x) with high fidelity using AI.
-- **Text Extraction (OCR)**: Extract text from selected images locally via Windows OCR.
-- **Sticker Maker**: Create transparent 480x480 WebP stickers by automatically removing backgrounds and cropping to the subject.
-- **Modify Image**: An all-in-one command with a full action panel for all image tools.
+- ✅ **Background Removal**: Functional. High-quality foreground extraction using the NPU.
+- 🛠️ **Super Resolution**: Planned. High-fidelity image upscaling (2x, 4x, 8x).
+- 🛠️ **Text Extraction (OCR)**: Planned. Local text extraction from images.
+- 🛠️ **Sticker Maker**: Planned. Automatic background removal and cropping to subjects for WebP stickers.
+- 🛠️ **Modify Image**: Scaffolded. All-in-one command UI for image tools.
 
 ### NPU Awake (npu-awake-ext)
-Prevents your PC from sleeping using a dedicated C# background worker and the SetThreadExecutionState API.
-- **Indefinite Awake**: Toggle the system to stay awake indefinitely.
-- **Timed Awake (Awake For...)**: Keep the system active for a specific number of minutes.
-- **Awake Until**: Keep the system active until a specific clock time (e.g., 17:30).
-- **Screen-Off Mode**: Keep the system awake and processing (good for downloads/renders) while allowing the display to turn off.
-- **Status Monitoring**: View the current keep-awake mode and remaining time directly in Raycast.
+Prevents your PC from sleeping using a dedicated background worker and the `SetThreadExecutionState` API.
+- ✅ **Indefinite/Timed Awake**: Functional. Core keep-awake logic implemented in C# keeper.
+- 🛠️ **Raycast UI**: Scaffolded. Commands for Awake, Awake For..., and Awake Until.
 
 ### NPU Notes (npu-notes-ext)
-A local-first, NPU-integrated note-taking experience with automated organization.
-- **Smart Add Note**: Paste sloppy text and let Phi-Silica clean the grammar, format it as markdown, and automatically classify it into categories (Work, Personal, Tasks, etc.).
-- **Browse Notes**: View your notes library instantly, automatically grouped by category.
-- **Search Notes**: Find notes via keyword or semantic meaning.
-- **Local Storage**: Your notes are saved as local Markdown files in your Documents folder.
+Local-first, NPU-integrated note-taking with automated organization.
+- 🛠️ **Smart Add Note**: Planned. Phi-Silica powered grammar cleanup and classification.
+- 🛠️ **Browse/Search Notes**: Planned. Organization and semantic search of local Markdown notes.
 
 ### NPU Text Tools (npu-text-tools-ext)
 Local text refinement and rewriting powered by Phi-Silica (NPU).
-- **Fix Grammar**: Correct spelling and grammar without changing the original meaning.
-- **Make Formal**: Rewrite text in a professional, professional tone.
-- **Make Concise**: Shorten text to its essential points.
-- **Simplify**: Rewrite in plain, easy-to-understand language.
-- **Bullet Points**: Convert prose into a clear, well-structured bulleted list.
-- **Custom Rewrite**: Provide your own instructions for how the AI should transform the text.
+- 🛠️ **Phi-Silica Rewriting**: Planned. Local implementations for Grammar Fix, Tone Shifting, Summarization (Bullet Points), and Simplify.
+- 🛠️ **Custom Rewrite**: Planned. User-guided text transformation.
 
 ## Getting Started
 
@@ -55,7 +48,7 @@ Local text refinement and rewriting powered by Phi-Silica (NPU).
    ```
 
 2. **Register Sparse Package Identity**:
-   Run the registration script as **Administrator** to grant the bridges access to Windows Copilot Runtime APIs:
+   Run the registration script as **Administrator** to grant the bridges access to Windows Copilot Runtime APIs (required for NPU features):
    ```powershell
    .\register-bridge.ps1
    ```
@@ -65,13 +58,6 @@ Local text refinement and rewriting powered by Phi-Silica (NPU).
    ```powershell
    npm install
    ```
-
-## Development
-To start a specific extension in Raycast development mode:
-```powershell
-cd npu-image-editor-ext
-npm run dev
-```
 
 ## Architecture
 The suite uses the **Bridge Pattern** to connect Raycast's TypeScript environment with high-performance WinRT APIs:
