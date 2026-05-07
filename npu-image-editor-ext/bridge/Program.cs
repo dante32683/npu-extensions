@@ -35,7 +35,12 @@ namespace NpuBridge
                         await RemoveBackground(inputPath);
                         break;
                     case "super-resolution":
-                        WriteNotImplemented("super-resolution", "Usage: NpuBridge.exe super-resolution <inputPath> <scaleFactor>");
+                        if (args.Length < 3)
+                        {
+                            Console.WriteLine(JsonSerializer.Serialize(new { status = "error", message = "Usage: NpuBridge.exe super-resolution <inputPath> <scaleFactor>" }));
+                            return;
+                        }
+                        await SuperResolution(inputPath, args[2]);
                         break;
                     case "ocr":
                         WriteNotImplemented("ocr", "Usage: NpuBridge.exe ocr <inputPath>");
@@ -170,6 +175,74 @@ namespace NpuBridge
             uint capacity;
             ((delegate* unmanaged[Stdcall]<IntPtr, byte**, uint*, void>)vtable[3])(comPtr, &data, &capacity);
             return data;
+        }
+
+        static async Task SuperResolution(string inputPath, string scaleFactorStr)
+        {
+            if (!File.Exists(inputPath))
+                throw new FileNotFoundException("Input image not found.", inputPath);
+
+            if (!int.TryParse(scaleFactorStr, out int scaleFactor) || (scaleFactor != 2 && scaleFactor != 4))
+            {
+                throw new ArgumentException("Scale factor must be 2 or 4.");
+            }
+
+            if (ImageScaler.GetReadyState() != AIFeatureReadyState.Ready)
+            {
+                Console.Error.WriteLine("[NpuBridge] Model not ready — calling EnsureReadyAsync (may take a moment on first run)...");
+                var readyResult = await ImageScaler.EnsureReadyAsync();
+                if (readyResult.Status != AIFeatureReadyResultState.Success) 
+                    throw new Exception($"NPU ImageScaler model unavailable: {readyResult.Status}");
+            }
+
+            string fullInputPath = Path.GetFullPath(inputPath);
+            StorageFile inputFile = await StorageFile.GetFileFromPathAsync(fullInputPath);
+
+            SoftwareBitmap source;
+            using (var stream = await inputFile.OpenAsync(FileAccessMode.Read))
+            {
+                var decoder = await BitmapDecoder.CreateAsync(stream);       
+                source = await decoder.GetSoftwareBitmapAsync();
+            }
+
+            using var scaler = await ImageScaler.CreateAsync();
+            
+            // Assume method is ScaleSoftwareBitmap or Scale
+            SoftwareBitmap result = scaler.ScaleSoftwareBitmap(source, source.PixelWidth * scaleFactor, source.PixelHeight * scaleFactor);
+
+            string dir = Path.GetDirectoryName(fullInputPath)!;
+            string baseName = Path.GetFileNameWithoutExtension(fullInputPath);
+            string extension = Path.GetExtension(fullInputPath);
+            string outputFileName = $"{baseName}_{scaleFactor}x{extension}";
+            string outputPath = Path.Combine(dir, outputFileName);
+
+            var folder = await StorageFolder.GetFolderFromPathAsync(dir);    
+            var outputFile = await folder.CreateFileAsync(outputFileName, CreationCollisionOption.ReplaceExisting);
+
+            using (var outStream = await outputFile.OpenAsync(FileAccessMode.ReadWrite))
+            {
+                Guid encoderId = BitmapEncoder.PngEncoderId;
+                if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+                    encoderId = BitmapEncoder.JpegEncoderId;
+                else if (extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase))
+                    encoderId = BitmapEncoder.BmpEncoderId;
+                else if (extension.Equals(".tiff", StringComparison.OrdinalIgnoreCase))
+                    encoderId = BitmapEncoder.TiffEncoderId;
+
+                var encoder = await BitmapEncoder.CreateAsync(encoderId, outStream);
+                encoder.SetSoftwareBitmap(result);
+                await encoder.FlushAsync();
+            }
+
+            source.Dispose();
+            result.Dispose();
+
+            Console.WriteLine(JsonSerializer.Serialize(new
+            {
+                status = "success",
+                outputPath,
+                message = $"Upscaled {scaleFactor}x successfully."
+            }));
         }
     }
 }

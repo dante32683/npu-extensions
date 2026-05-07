@@ -9,7 +9,7 @@ A collection of high-performance Raycast for Windows extensions leveraging the W
 ### NPU Image Editor (npu-image-editor-ext)
 Advanced image editing powered by the Microsoft.Windows.AI.Imaging APIs.
 - ✅ **Background Removal**: Functional. High-quality foreground extraction using the NPU.
-- 🛠️ **Super Resolution**: Planned.
+- ✅ **Super Resolution**: Functional. Upscales images (2x/4x) using the NPU ImageScaler.
 - 🛠️ **Text Extraction (OCR)**: Planned.
 - 🛠️ **Sticker Maker**: Planned.
 - 🛠️ **Modify Image**: UI scaffolded.

@@ -55,8 +55,16 @@ export default function Command() {
         }
     }
 
-    const runNpuCommand = async (command: string, file: SelectedFile) => {
-        const toast = await showToast({ style: Toast.Style.Animated, title: `Running NPU ${command}...` })
+    const runNpuCommand = async (command: string, file: SelectedFile, extraArgs: string[] = []) => {
+        const friendlyName = command
+            .split("-")
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ")
+        const toast = await showToast({
+            style: Toast.Style.Animated,
+            title: `Running NPU ${friendlyName}...`,
+            message: "First run may take a moment to prepare the NPU model.",
+        })
 
         if (!fs.existsSync(BRIDGE_PATH)) {
             toast.style = Toast.Style.Failure
@@ -66,7 +74,7 @@ export default function Command() {
         }
 
         try {
-            const { stdout, stderr } = await execFileAsync(BRIDGE_PATH, [command, file.path], {
+            const { stdout, stderr } = await execFileAsync(BRIDGE_PATH, [command, file.path, ...extraArgs], {
                 cwd: path.dirname(BRIDGE_PATH),
                 windowsHide: true,
             })
@@ -152,9 +160,11 @@ export default function Command() {
                                         onAction={() => runNpuCommand("remove-background", file)}
                                     />
                                     <Action
-                                        title="Super Resolution (Coming Soon)"
+                                        title="Super Resolution"
                                         icon={Icon.MagnifyingGlass}
-                                        onAction={() => {}}
+                                        onAction={() =>
+                                            push(<SuperResolutionForm file={file} runNpuCommand={runNpuCommand} />)
+                                        }
                                     />
                                 </ActionPanel.Section>
 
@@ -410,6 +420,31 @@ function OptimizeForm({ onProcess }: { onProcess: any }) {
                 defaultValue="75"
             />
             <Form.Description text="For JPEG images, reduces quality to shrink file size. PNG and other lossless formats will be re-encoded to strip metadata." />
+        </Form>
+    )
+}
+
+function SuperResolutionForm({ file, runNpuCommand }: { file: SelectedFile; runNpuCommand: any }) {
+    const { pop } = useNavigation()
+    return (
+        <Form
+            actions={
+                <ActionPanel>
+                    <Action.SubmitForm
+                        title="Upscale Image"
+                        onSubmit={async (values: { factor: string }) => {
+                            await runNpuCommand("super-resolution", file, [values.factor])
+                            pop()
+                        }}
+                    />
+                </ActionPanel>
+            }
+        >
+            <Form.Dropdown id="factor" title="Scale Factor" defaultValue="2">
+                <Form.Dropdown.Item value="2" title="2x" />
+                <Form.Dropdown.Item value="4" title="4x" />
+            </Form.Dropdown>
+            <Form.Description text="Uses the on-device NPU ImageScaler to upscale the image." />
         </Form>
     )
 }
