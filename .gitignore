@@ -15,11 +15,12 @@ assets/bin/
 !tsconfig.json
 !*.deps.json
 !*.runtimeconfig.json
-# Note: assets/bin contains the NPU Bridge which is required for the extension, 
-# but usually we don't want to commit the whole self-contained bundle if it's large.
-# However, for Raycast extensions, assets are often bundled.
-# Given the project context, assets/bin contains many DLLs.
-# I will exclude assets/bin for now but the user might want to include it later.
+
+# Planning and Instruction Documents (Keep local only)
+CLAUDE.md
+GEMINI.md
+COPILOT_CONTEXT.md
+NPU_INFO.md
 
 # IDEs
 .vscode/
