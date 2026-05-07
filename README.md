@@ -4,25 +4,25 @@ A collection of high-performance Raycast for Windows extensions leveraging the W
 
 ## Extensions
 
-### 🖼️ NPU Image Editor (`npu-image-editor-ext`)
+### NPU Image Editor (`npu-image-editor-ext`)
 Advanced image editing powered by the `Microsoft.Windows.AI.Imaging` APIs.
 - **Background Removal**: Intelligent foreground extraction using the NPU.
 - **Super Resolution**: Upscale images with high fidelity using AI.
 - **Text Extraction (OCR)**: Extract text from images locally.
 - **Sticker Maker**: Create custom stickers by automatically removing backgrounds.
 
-### ☕ NPU Awake (`npu-awake-ext`)
+### NPU Awake (`npu-awake-ext`)
 Keep your PC awake using a dedicated C# background worker.
 - **Timed Awake**: Keep the system active for a specific duration or until a set time.
 - **Screen Off Mode**: Keep the PC awake while allowing the display to turn off.
 - **Status Monitoring**: Integrated status check within Raycast.
 
-### 📝 NPU Notes (`npu-notes-ext`)
+### NPU Notes (`npu-notes-ext`)
 A local-first, NPU-integrated note-taking experience.
 - **Fast Search**: Search through your notes instantly.
 - **Local Storage**: Your data never leaves your machine.
 
-### ✍️ NPU Text Tools (`npu-text-tools-ext`)
+### NPU Text Tools (`npu-text-tools-ext`)
 Local text refinement and rewriting powered by Phi Silica (NPU).
 - **Rewrite Styles**: Simplify, Make Formal, or Make Concise.
 - **Grammar Fix**: Instant local grammar and spelling correction.
