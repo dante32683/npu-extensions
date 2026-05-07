@@ -29,6 +29,7 @@ COPILOT_CONTEXT.md
 NPU_INFO.md
 FEATURE_PLAN.md
 AGENTS.md
+*.skill
 
 # IDEs
 .vscode/
