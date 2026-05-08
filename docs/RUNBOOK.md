@@ -116,7 +116,7 @@ When working in **`npu-image-editor-ext/bridge/Program.cs`**:
 ## Development notes
 
 - Manual testing via `npm run dev`; no shared automated test suite.
-- **No shared npm packages** between extensions.
+- **No shared runtime code** between extensions — no shared npm packages, no `file:` siblings, no codegen sync, no symlinks. When utilities recur (e.g. `ensure-bridge-registered.ts`), each extension copies the file verbatim. There is no guarantee any two extensions are installed together; each must work standalone. See `CONTRIBUTING.md` § "Project structure" for the full policy.
 - On-device AI only — no cloud inference for NPU/Phi features.
 - `systemAIModels` / sparse registration: Developer Mode for dev; LAF / Store rules for production distribution.
 - `dotnet publish -o` — prefer forward slashes in mixed shell environments (`-o "../assets/bin"`).

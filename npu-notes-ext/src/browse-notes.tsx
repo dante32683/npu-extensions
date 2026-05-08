@@ -14,7 +14,11 @@ export default function Command() {
             const allNotes = getAllNotes(folder)
             setNotes(allNotes)
         } catch (error) {
-            showToast({ style: Toast.Style.Failure, title: "Failed to Load Notes" })
+            showToast({
+                style: Toast.Style.Failure,
+                title: "Failed to Load Notes",
+                message: "Check that your notes folder exists and is readable.",
+            })
         } finally {
             setIsLoading(false)
         }

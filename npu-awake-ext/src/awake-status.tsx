@@ -70,6 +70,7 @@ export default function Command() {
                     actions={
                         <ActionPanel>
                             <Action
+                                // eslint-disable-next-line @raycast/prefer-title-case
                                 title="Let PC Sleep"
                                 icon={Icon.Moon}
                                 onAction={async () => {
@@ -93,6 +94,7 @@ export default function Command() {
                     actions={
                         <ActionPanel>
                             <Action
+                                // eslint-disable-next-line @raycast/prefer-title-case
                                 title="Let PC Sleep (Clear Manual Override)"
                                 icon={Icon.Moon}
                                 onAction={async () => {

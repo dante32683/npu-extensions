@@ -847,12 +847,42 @@ If/when a stable embedding API ships in `Microsoft.Windows.AI` (or via `Microsof
 | State | `Toast.Style` | Title | Message |
 |-------|---------------|-------|---------|
 | Animated (working) | `Animated` | `Running NPU <Friendly Name>...` *(NPU)* / `Formatting with Phi-Silica...` *(Phi)* / `Detecting Active Workspace...` *(toolbox)* | `First run may take a moment to prepare the NPU model.` (NPU only; Phi/toolbox: short context-specific message ending in `...`) |
-| Success | `Success` | `<Friendly Name> Complete` | `<Plain past-tense summary>.` (e.g., `Upscaled 3 image(s).`, `Saved to school/2026-05-07_office-hours.md.`) |
-| Failure | `Failure` | `<Friendly Name> Failed` | `<One-sentence reason>. <One short recovery hint>.` (e.g., `Bridge not found. Run dotnet publish in npu-image-editor-ext/bridge.`) |
+| Success | `Success` | `<Friendly Name> Complete` *or* a direct outcome statement (e.g., `PC Will Stay Awake Indefinitely`, `Note Saved`) | `<Plain past-tense summary>.` (e.g., `Upscaled 3 image(s).`, `Saved to school/2026-05-07_office-hours.md.`) — optional when the title is already self-explanatory. |
+| Failure (action) | `Failure` | `<Friendly Name> Failed` (e.g., `Super Resolution Failed`, `OCR Failed`) | `<One-sentence reason>. <One short recovery hint>.` (e.g., `Bridge not found. Run dotnet publish in npu-image-editor-ext/bridge.`) |
+| Failure (validation) | `Failure` | `<Issue>` — direct noun phrase, Title Case (e.g., `No Images Selected`, `Invalid Time Format`, `No Note Provided`) | `<What to do instead>.` Required for every Failure toast — never leave a bare title with no message. |
 
-- **Ellipsis form is exactly three dots** (`...`), never `…`. Animated toasts always end in `...`. Success/failure messages never do.
+- **Ellipsis form is exactly three dots** (`...`), never `…` (U+2026). Animated toasts always end in `...`. Success/failure messages never do.
+- **Quotes inside toast strings are ASCII** (`"` `'`), not curly typography (`“` `”` `‘` `’`). Same applies to `Form` labels, `List.EmptyView` strings, `confirmAlert` text — anywhere a string is rendered to the user.
 - **Never** mix `Processing...` and `Please wait` in the same flow. Always prefer the `Running NPU <Friendly Name>...` form for NPU calls.
 - **Never** emit emoji in toasts. (Plain templates only — they render badly in the Raycast toast UI on Windows.)
+- **Failure toasts must have a message.** Even a validation failure like "No Images Selected" benefits from a one-line follow-up so the user knows what to do.
+
+### Toast audit tool
+
+`scripts/audit-toasts.mjs` (root level) scans every `*-ext/src/**/*.{ts,tsx}` for `showToast({...})` calls and `<var>.title|message|style = ...` assignments. Run from repo root:
+
+```powershell
+node scripts/audit-toasts.mjs           # report-only; exit 1 if any violations
+node scripts/audit-toasts.mjs --fix     # apply mechanical fixes, then re-audit
+node scripts/audit-toasts.mjs --verbose # also print clean toasts in the table
+```
+
+Mechanical fixes (auto-applied with `--fix`):
+
+- Replace `…` (U+2026) with `...` inside string and template literals.
+- Replace curly quotes (`“ ” ‘ ’`) with their ASCII equivalents inside string and template literals.
+- Append a trailing `.` to `message: "..."` and `<var>.message = "..."` string literals that lack terminal punctuation.
+- Trim trailing whitespace inside `title` / `message` literals.
+
+Human-review violations (reported, never auto-fixed):
+
+- `animated-title-missing-ellipsis` — Animated toast title doesn't end in `...`.
+- `success-title-mentions-failure` — Success-style toast title contains "Failed" / "Error".
+- `success-title-trailing-punctuation` — Success-style title ends in `.` / `!` / `?`.
+- `failure-without-message` — Failure-style toast has no `message` field at all.
+- `emoji-in-title` / `emoji-in-message` — emoji codepoints in user-visible strings.
+
+The script writes a JSON report to `scripts/audit-toasts.report.json` (gitignored — it's regenerated on every run). New extensions inherit the audit by virtue of being under a `*-ext` folder; no per-extension wiring needed.
 
 ### Action panel ordering (top-to-bottom in every command)
 
@@ -885,8 +915,8 @@ If/when a stable embedding API ships in `Microsoft.Windows.AI` (or via `Microsof
 - ✅ **`ImageForegroundExtractor` references corrected** *(done 2026-05-08)*. `docs/RUNBOOK.md`, `npu-image-editor-ext/NOTES.md`, `NPU_INFO.md`, and the active forward-looking parts of `FEATURE_PLAN.md §6` now say `ImageObjectExtractor` with a parenthetical noting the older draft name. Historical struck-through sections were left untouched per the planning-database rule at the top of this file.
 - ✅ **`search-notes` command hidden** *(done 2026-05-08)*. Removed from `npu-notes-ext/package.json` and the stub `src/search-notes.tsx` deleted to satisfy the "no `WIP` to users" rule. Re-added as part of §10 (see "Re-introduce `search-notes`" subsection).
 - ✅ **`NpuBridge.exe` name collision header comments added** *(done 2026-05-08)*. Each `bridge/Program.cs` now opens with a sparse-identity banner naming the matching `Package.appxmanifest` Identity Name and warning not to copy the exe across extensions.
-- 🔲 **`ensure-bridge-registered.ts`** is byte-identical across `npu-image-editor-ext`, `npu-notes-ext`, and `npu-awake-ext`. Fine for now (no shared package between extensions per `docs/RUNBOOK.md`), but new extensions (`npu-dev-toolbox-ext`) must copy the same file verbatim, not re-derive it.
-- 🔲 **Toast string drift across existing extensions.** Some commands still use phrasing like `"Bridge Not Found"` or `"NPU Processing Failed"` that don’t match the canonical `<Friendly Name> Failed` template in § Suite UX conventions. Audit + normalize in a follow-up pass — touching this required when implementing §6 / §9 / §10 anyway.
+- ✅ **`ensure-bridge-registered.ts` duplication — accepted as permanent policy** *(decided 2026-05-08)*. Per `CONTRIBUTING.md` § "Project structure" and `docs/RUNBOOK.md`, **no shared runtime code between extensions** in any form (no shared npm packages, no `file:` siblings, no codegen sync, no symlinks). Each extension is independently installable and must work standalone. New extensions copy `ensure-bridge-registered.ts` (and any other recurring helper) verbatim. Drift between copies is acceptable; coupling is not. **No further action.**
+- ✅ **Toast string drift across existing extensions** *(initial sweep done 2026-05-08)*. Built `scripts/audit-toasts.mjs` (slot-scoped: only edits inside `showToast({...})` bodies and `<var>.title|message|style = ...` assignments — never touches unrelated `title:`/`message:` keys in YAML parsers, action labels, etc.). First run found 13 violations across 4 extensions; mechanical fixes auto-applied (typography normalization, message terminal punctuation, trailing-whitespace trim with proper outer-delimiter escape so curly→ASCII inside `"..."` strings produces `\"` instead of breaking syntax). Remaining 5 judgment-required fixes applied by hand (added recovery-hint messages to bare-title Failure toasts, switched the `ImageCommandScaffold` placeholder from `Animated` to `Failure` style with `Not Implemented Yet`). The audit script is now a permanent part of the workflow: run `node scripts/audit-toasts.mjs` from repo root before merging anything that touches toasts. Each new extension is automatically covered (any folder ending in `-ext`).
 
 ---
 

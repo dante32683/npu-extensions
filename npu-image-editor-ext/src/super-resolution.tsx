@@ -25,7 +25,11 @@ export default function Command() {
 
     async function handleUpscale(values: { factor: string }) {
         if (selectedFiles.length === 0) {
-            await showToast({ style: Toast.Style.Failure, title: "No Images Selected" })
+            await showToast({
+                style: Toast.Style.Failure,
+                title: "No Images Selected",
+                message: "Select images in Explorer first.",
+            })
             return
         }
 

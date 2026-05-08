@@ -32,7 +32,11 @@ export default function Command() {
     const handleSubmit = async (values: FormValues) => {
         const rawNote = values.note.trim()
         if (!rawNote) {
-            await showToast({ style: Toast.Style.Failure, title: "No Note Provided" })
+            await showToast({
+                style: Toast.Style.Failure,
+                title: "No Note Provided",
+                message: "Type or paste a note in the field.",
+            })
             return
         }
 
@@ -40,7 +44,7 @@ export default function Command() {
             await showToast({
                 style: Toast.Style.Failure,
                 title: "Bridge Not Found",
-                message: "Run: dotnet publish -c Release -r win-x64 --self-contained true",
+                message: "Run: dotnet publish -c Release -r win-x64 --self-contained true.",
             })
             return
         }

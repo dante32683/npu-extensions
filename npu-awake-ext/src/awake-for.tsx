@@ -1,4 +1,13 @@
-import { Action, ActionPanel, Form, getPreferenceValues, LaunchProps, showToast, Toast, useNavigation } from "@raycast/api"
+import {
+    Action,
+    ActionPanel,
+    Form,
+    getPreferenceValues,
+    LaunchProps,
+    showToast,
+    Toast,
+    useNavigation,
+} from "@raycast/api"
 import { setOverride } from "./utils/keeper-utils"
 
 interface Preferences {
@@ -15,7 +24,9 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
     const { pop } = useNavigation()
     const { duration } = props.arguments
 
-    const lidNote = showLidNote ? "Note: lid close / power button behavior depends on Windows power settings." : undefined
+    const lidNote = showLidNote
+        ? "Note: lid close / power button behavior depends on Windows power settings."
+        : undefined
 
     async function handleSubmit(values: { minutes: string }) {
         const mins = parseInt(values.minutes)

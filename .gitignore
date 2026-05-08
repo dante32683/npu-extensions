@@ -33,6 +33,9 @@ COPILOT_CONTEXT.md
 NPU_INFO.md
 *.skill
 
+# Tool output (regenerated on every run)
+scripts/audit-toasts.report.json
+
 # IDEs
 .vscode/
 .idea/

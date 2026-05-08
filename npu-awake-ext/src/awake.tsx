@@ -19,7 +19,8 @@ export default async function Command() {
         await setOverride({ mode: defaultAwakeMode })
         await showToast({
             style: Toast.Style.Success,
-            title: defaultAwakeMode === "screen-off" ? "PC Awake, Display Can Sleep" : "PC Will Stay Awake Indefinitely",
+            title:
+                defaultAwakeMode === "screen-off" ? "PC Awake, Display Can Sleep" : "PC Will Stay Awake Indefinitely",
         })
     }
 }

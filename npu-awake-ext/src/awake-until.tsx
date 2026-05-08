@@ -1,4 +1,13 @@
-import { Action, ActionPanel, Form, getPreferenceValues, LaunchProps, showToast, Toast, useNavigation } from "@raycast/api"
+import {
+    Action,
+    ActionPanel,
+    Form,
+    getPreferenceValues,
+    LaunchProps,
+    showToast,
+    Toast,
+    useNavigation,
+} from "@raycast/api"
 import { setOverride } from "./utils/keeper-utils"
 
 interface Preferences {
@@ -14,7 +23,9 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
     const { pop } = useNavigation()
     const { time } = props.arguments
 
-    const lidNote = showLidNote ? "Note: lid close / power button behavior depends on Windows power settings." : undefined
+    const lidNote = showLidNote
+        ? "Note: lid close / power button behavior depends on Windows power settings."
+        : undefined
 
     async function handleSubmit(values: { time: string }) {
         const targetEpoch = parseTimeString(values.time)
@@ -22,7 +33,7 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
             await showToast({
                 style: Toast.Style.Failure,
                 title: "Invalid Time Format",
-                message: "Use HH:mm (e.g. 17:30) or HH:mm:ss",
+                message: "Use HH:mm (e.g. 17:30) or HH:mm:ss.",
             })
             return
         }

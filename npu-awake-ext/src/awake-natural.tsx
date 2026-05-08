@@ -1,4 +1,14 @@
-import { Action, ActionPanel, Form, getPreferenceValues, LaunchProps, showToast, Toast, environment, Icon } from "@raycast/api"
+import {
+    Action,
+    ActionPanel,
+    Form,
+    getPreferenceValues,
+    LaunchProps,
+    showToast,
+    Toast,
+    environment,
+    Icon,
+} from "@raycast/api"
 import { execFile } from "child_process"
 import { promisify } from "util"
 import fs from "fs"
@@ -93,7 +103,7 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
             await showToast({
                 style: Toast.Style.Failure,
                 title: "Enter What You Want",
-                message: 'Try: "keep awake for 90 minutes"',
+                message: 'Try: "keep awake for 90 minutes".',
             })
             return
         }
@@ -110,7 +120,7 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
                 toast.style = Toast.Style.Success
                 toast.title = "Try:"
                 toast.message =
-                    "“keep awake”, “keep awake for 90 minutes”, “until 17:30”, “weekdays 09:00-17:00”, “stop schedules”"
+                    '"keep awake", "keep awake for 90 minutes", "until 17:30", "weekdays 09:00-17:00", "stop schedules".'
                 return
             }
 
@@ -122,7 +132,7 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
                     : s.schedules.length > 0
                       ? "Schedules configured"
                       : "Not keeping awake"
-                toast.message = "Use “Awake Status” for details."
+                toast.message = 'Use "Awake Status" for details.'
                 return
             }
 

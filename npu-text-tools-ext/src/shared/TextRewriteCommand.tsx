@@ -47,7 +47,11 @@ export function TextRewriteCommand({
     const handleSubmit = async (values: FormValues) => {
         const text = values.text.trim()
         if (!text) {
-            await showToast({ style: Toast.Style.Failure, title: "No Text Provided" })
+            await showToast({
+                style: Toast.Style.Failure,
+                title: "No Text Provided",
+                message: "Type or paste text to rewrite.",
+            })
             return
         }
 
@@ -55,7 +59,7 @@ export function TextRewriteCommand({
             await showToast({
                 style: Toast.Style.Failure,
                 title: "Bridge Not Found",
-                message: "Run: dotnet publish -c Release -r win-x64 --self-contained true",
+                message: "Run: dotnet publish -c Release -r win-x64 --self-contained true.",
             })
             return
         }

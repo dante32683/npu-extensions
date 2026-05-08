@@ -53,7 +53,9 @@ Use `-r win-arm64` on ARM64. **`--self-contained true` is mandatory** or Node of
 The repo is a **suite of independent** Raycast extensions:
 
 - Each extension has its own `package.json`, `tsconfig.json`, and `src/` tree.
-- Extensions **do not** share npm packages—duplicate small utilities if needed.
+- Extensions **do not** share runtime code in any form. **No shared npm packages, no `file:` siblings, no codegen scripts that sync source files between extensions, no symlinks.** Each extension must build, install, and run **without** any other folder in this repo being present.
+- When two extensions need the same small utility (e.g. `ensure-bridge-registered.ts`, `webp-encoder.ts`), **copy the file verbatim** into each extension’s own `src/utils/`. If it diverges later, that's fine — independent installation is the priority. The duplication cost is small and permanent.
+- Root-level `scripts/` (developer tools that don't ship inside any extension) are allowed. They must not be required at install or run time of any extension.
 - Native code is per extension: typically `bridge/` → `assets/bin/`. Some use other helpers (e.g. `npu-awake-ext/keeper/`). Authoritative table: **`EXTENSION_REGISTRY.md`**.
 
 Illustrative folders (confirm in registry):
