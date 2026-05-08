@@ -114,7 +114,7 @@ These files needed updating before the respective extensions could run in `npm r
 | 7 | Sticker Maker (manual focus) | `npu-image-editor-ext` | High — API TBD |
 | 8 | Search Notes | `npu-notes-ext` | Later |
 
-> **Status (2026-05-07):** Item **#3 (Phi-Silica Text Tools)** is complete — see **§3** below (including HTML debug comment). Items #1–2 were already complete; #4+ remain as planned.
+> **Status (2026-05-07):** Items **#1 Super Resolution**, **#2 OCR**, **#3 Phi-Silica Text Tools**, and **#4 Smart Note Taker** are implemented. Next up per **Build Order** is **#5 Awake**. The PENDING `package.json` section below remains historical reference.
 
 ---
 
@@ -288,11 +288,18 @@ NpuBridge.exe phi-rewrite <mode> <tempInputFile>
 
 ---
 
-## 4. Smart Note Taker
-**Extension:** `npu-notes-ext` (new, scaffolded at `npu-notes-ext/`)
-**New files:** `src/add-note.tsx`, `src/browse-notes.tsx`, `src/search-notes.tsx` (stub only), `bridge/Program.cs`
+## ~~4. Smart Note Taker~~
+> **Completed by Gemini (2026-05-07).**
+> - Implemented `npu-notes-ext/bridge/Program.cs` with `phi-note` command using Phi-Silica.
+> - Created `src/add-note.tsx` for intelligent note filing and `src/browse-notes.tsx` for browsing saved notes.
+> - Implemented `src/utils/note-utils.ts` for storage management and markdown frontmatter parsing.
+> - **Lesson Learned — JSON Parsing:** Phi-Silica occasionally wraps JSON output in markdown code blocks. Added robust parsing in the C# bridge to extract the raw JSON object from the response string.
+> - **Lesson Learned — Categories:** Implemented automatic subfolder creation based on the category chosen by Phi to keep the notes folder organized.
 
-### Configuration (Raycast extension preferences)
+~~**Extension:** `npu-notes-ext` (new, scaffolded at `npu-notes-ext/`)~~
+~~**New files:** `src/add-note.tsx`, `src/browse-notes.tsx`, `src/search-notes.tsx` (stub only), `bridge/Program.cs`~~
+
+### ~~Configuration (Raycast extension preferences)~~
 - **Notes Folder** (`notesFolder`): directory picker, default: `%USERPROFILE%\Documents\RaycastNotes`
 - Resolved in TS with: `const folder = prefs.notesFolder || path.join(os.homedir(), "Documents", "RaycastNotes")`
 

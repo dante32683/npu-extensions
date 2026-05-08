@@ -8,6 +8,7 @@ All notable changes to this suite are documented here. The format follows [Keep 
 
 ### Added
 
+- **Smart Note Taker (`npu-notes-ext`)**: Phi-Silica backed note formatting and classification. Includes `add-note` for sloppy note filing and `browse-notes` for categorized listing/searching.
 - Documentation hub: `CONTRIBUTING.md`, `docs/RUNBOOK.md`, per-extension `NOTES.md`, and root stub files `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` pointing at the same workflow.
 
 ### Changed

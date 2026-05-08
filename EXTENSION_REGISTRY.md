@@ -10,7 +10,7 @@
 |--------|------|---------------|---------------------------------|-----------------------------------------------------|--------|
 | `npu-image-editor-ext` | Raycast + WinRT bridge | `assets/bin/NpuBridge.exe` | `NpuBridge.Identity` | `remove-background`, `super-resolution`, `ocr`, … (see source) | Active |
 | `npu-text-tools-ext` | Raycast + Phi bridge | `assets/bin/NpuBridge.exe` | `NpuTextToolsBridge.Identity` | `phi-rewrite` + modes in source | Active |
-| `npu-notes-ext` | Raycast + bridge (scaffold) | `assets/bin/NpuBridge.exe` (when published) | `NpuNotesBridge.Identity` | Planned: `phi-note`, etc. | Scaffold |
+| `npu-notes-ext` | Raycast + bridge | `assets/bin/NpuBridge.exe` | `NpuNotesBridge.Identity` | `phi-note` | Active |
 | `npu-awake-ext` | Raycast + Win32 helper | `keeper/` → publish target `assets/bin/` (exe name from `AwakeKeeper.csproj`) | *None* for sparse AI — not a Copilot bridge | CLI args per `keeper/Program.cs` | Partial |
 | `image-modification-ext` | Raycast (if present) | *None* | *None* | Pure TS | Optional |
 
