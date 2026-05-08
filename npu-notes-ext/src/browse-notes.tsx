@@ -14,7 +14,7 @@ export default function Command() {
             const allNotes = getAllNotes(folder)
             setNotes(allNotes)
         } catch (error) {
-            showToast({ style: Toast.Style.Failure, title: "Failed to load notes" })
+            showToast({ style: Toast.Style.Failure, title: "Failed to Load Notes" })
         } finally {
             setIsLoading(false)
         }

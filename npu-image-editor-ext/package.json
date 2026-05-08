@@ -49,9 +49,45 @@
             ]
         }
     ],
+    "preferences": [
+        {
+            "name": "defaultScaleFactor",
+            "title": "Default Scale Factor",
+            "description": "Pre-selected scale for Super Resolution.",
+            "type": "dropdown",
+            "required": false,
+            "default": "2",
+            "data": [
+                {
+                    "title": "2×",
+                    "value": "2"
+                },
+                {
+                    "title": "4×",
+                    "value": "4"
+                }
+            ]
+        },
+        {
+            "name": "defaultJpegQuality",
+            "title": "Default JPEG Quality",
+            "description": "Pre-filled quality (1–100) for the Optimize action.",
+            "type": "textfield",
+            "required": false,
+            "default": "75"
+        },
+        {
+            "name": "clipboardOutputDir",
+            "title": "Clipboard Image Output",
+            "description": "Where to save images processed from clipboard. Defaults to Desktop.",
+            "type": "directory",
+            "required": false
+        }
+    ],
     "dependencies": {
         "@raycast/api": "^1.71.0",
-        "jimp": "^1.6.1"
+    "@jsquash/webp": "^1.5.0",
+    "jimp": "^1.6.1"
     },
     "devDependencies": {
         "@raycast/eslint-config": "^1.0.8",

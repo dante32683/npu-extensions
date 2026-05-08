@@ -7,7 +7,14 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-type ExtensionPreferences = {}
+type ExtensionPreferences = {
+  /** Default Scale Factor - Pre-selected scale for Super Resolution. */
+  "defaultScaleFactor": "2" | "4",
+  /** Default JPEG Quality - Pre-filled quality (1–100) for the Optimize action. */
+  "defaultJpegQuality": string,
+  /** Clipboard Image Output - Where to save images processed from clipboard. Defaults to Desktop. */
+  "clipboardOutputDir"?: string
+}
 
 /** Preferences accessible in all the extension's commands */
 declare type Preferences = ExtensionPreferences

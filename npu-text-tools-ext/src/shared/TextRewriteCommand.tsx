@@ -47,14 +47,14 @@ export function TextRewriteCommand({
     const handleSubmit = async (values: FormValues) => {
         const text = values.text.trim()
         if (!text) {
-            await showToast({ style: Toast.Style.Failure, title: "No text provided" })
+            await showToast({ style: Toast.Style.Failure, title: "No Text Provided" })
             return
         }
 
         if (!fs.existsSync(BRIDGE_PATH)) {
             await showToast({
                 style: Toast.Style.Failure,
-                title: "Bridge not found",
+                title: "Bridge Not Found",
                 message: "Run: dotnet publish -c Release -r win-x64 --self-contained true",
             })
             return
@@ -74,7 +74,7 @@ export function TextRewriteCommand({
                 const instruction = (values.instruction ?? "").trim()
                 if (!instruction) {
                     toast.style = Toast.Style.Failure
-                    toast.title = "No instruction provided"
+                    toast.title = "No Instruction Provided"
                     return
                 }
                 fs.writeFileSync(tempFile, JSON.stringify({ instruction, text }), "utf8")
@@ -102,7 +102,7 @@ export function TextRewriteCommand({
             setResult(parsed.result)
         } catch (err: unknown) {
             toast.style = Toast.Style.Failure
-            toast.title = "Phi-Silica error"
+            toast.title = "Phi-Silica Error"
             toast.message = err instanceof Error ? err.message : String(err)
         } finally {
             if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile)

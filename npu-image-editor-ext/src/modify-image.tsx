@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @raycast/prefer-title-case */
-import { Action, ActionPanel, Icon, List, showToast, Toast, useNavigation, environment, Form } from "@raycast/api"
+import { Action, ActionPanel, getPreferenceValues, Icon, List, showToast, Toast, useNavigation, environment, Form } from "@raycast/api"
 import { useEffect, useState, useCallback } from "react"
 import { execFile } from "child_process"
 import { promisify } from "util"
@@ -7,6 +7,8 @@ import path from "path"
 import fs from "fs"
 import os from "os"
 import { Jimp } from "jimp"
+import encode, { init as initWebpEncode } from "@jsquash/webp/encode"
+import { simd } from "wasm-feature-detect"
 import { getSelectedExplorerFiles, getClipboardImage, SelectedFile } from "./utils/powershell-utils"
 import { ExtractTextForm } from "./extract-text"
 import { ensureBridgeRegisteredOnce } from "./utils/ensure-bridge-registered"
@@ -18,6 +20,40 @@ const BRIDGE_BIN_DIR = path.join(environment.assetsPath, "bin")
 const BRIDGE_MANIFEST_SOURCE = path.join(environment.assetsPath, "..", "bridge", "Package.appxmanifest")
 const BRIDGE_IDENTITY = "NpuBridge.Identity"
 
+interface ImageEditorPreferences {
+    defaultScaleFactor: string
+    defaultJpegQuality: string
+    clipboardOutputDir?: string
+}
+
+let webpEncodeInit: Promise<unknown> | undefined
+
+function ensureWebpEncodeInit(): Promise<void> {
+    if (!webpEncodeInit) {
+        webpEncodeInit = (async () => {
+            const useSimd = await simd().catch(() => false)
+            const wasmFile = useSimd ? "webp_enc_simd.wasm" : "webp_enc.wasm"
+            const wasmPath = path.join(environment.assetsPath, "webp", wasmFile)
+            if (!fs.existsSync(wasmPath)) {
+                throw new Error(
+                    `WebP encoder wasm missing: ${wasmPath}. Rebuild the extension so assets/webp/*.wasm are included.`,
+                )
+            }
+
+            const wasmBytes = await fs.promises.readFile(wasmPath)
+            const wasmU8 = new Uint8Array(wasmBytes.buffer, wasmBytes.byteOffset, wasmBytes.byteLength)
+            const wasmModule = await WebAssembly.compile(wasmU8 as any)
+
+            // Passing a compiled module avoids any URL parsing / fetch-based loading.
+            await (initWebpEncode as any)(wasmModule as any, {
+                // Prevent Emscripten glue from doing `new URL("*.wasm", import.meta.url)` in Raycast.
+                locateFile: (filename: string) => filename,
+            } as any)
+        })()
+    }
+    return webpEncodeInit as Promise<void>
+}
+
 function hexToJimpColor(hex: string): number {
     const clean = hex.replace(/^#/, "").padEnd(6, "0")
     const r = parseInt(clean.slice(0, 2), 16)
@@ -27,6 +63,7 @@ function hexToJimpColor(hex: string): number {
 }
 
 export default function Command() {
+    const { clipboardOutputDir } = getPreferenceValues<ImageEditorPreferences>()
     const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const { push } = useNavigation()
@@ -53,10 +90,10 @@ export default function Command() {
         if (clipboardFile) {
             setSelectedFiles([clipboardFile])
             toast.style = Toast.Style.Success
-            toast.title = "Clipboard image loaded"
+            toast.title = "Clipboard Image Loaded"
         } else {
             toast.style = Toast.Style.Failure
-            toast.title = "No image in clipboard"
+            toast.title = "No Image in Clipboard"
         }
     }
 
@@ -96,7 +133,7 @@ export default function Command() {
 
             if (result.status === "success") {
                 toast.style = Toast.Style.Success
-                toast.title = "Success"
+                toast.title = `${friendlyName} Complete`
                 toast.message = result.message
                 fetchSelectedFiles()
             } else {
@@ -131,7 +168,9 @@ export default function Command() {
                 const targetExt = options.format ? `.${options.format}` : file.extension
                 const newName = `${path.basename(file.name, file.extension)}${suffix}${targetExt}`
 
-                const finalDir = file.name.startsWith("clipboard_") ? path.join(os.homedir(), "Desktop") : dir
+                const finalDir = file.name.startsWith("clipboard_")
+                    ? (clipboardOutputDir || path.join(os.homedir(), "Desktop"))
+                    : dir
                 const outputPath = path.join(finalDir, newName)
 
                 let image = await (Jimp as any).read(file.path)
@@ -143,12 +182,58 @@ export default function Command() {
             }
 
             toast.style = Toast.Style.Success
-            toast.title = "Success"
+            toast.title = "Processing Complete"
             toast.message = `Processed ${selectedFiles.length} image(s)`
             fetchSelectedFiles()
         } catch (error) {
             toast.style = Toast.Style.Failure
-            toast.title = "Processing failed"
+            toast.title = "Processing Failed"
+            toast.message = String(error)
+        }
+    }
+
+    const handleConvertToWebP = async (suffix: string) => {
+        if (selectedFiles.length === 0) return
+
+        const toast = await showToast({
+            style: Toast.Style.Animated,
+            title: `Converting ${selectedFiles.length} image(s) to WebP...`,
+        })
+
+        try {
+            for (const file of selectedFiles) {
+                const dir = path.dirname(file.path)
+                const newName = `${path.basename(file.name, file.extension)}${suffix}.webp`
+
+                const finalDir = file.name.startsWith("clipboard_")
+                    ? (clipboardOutputDir || path.join(os.homedir(), "Desktop"))
+                    : dir
+                const outputPath = path.join(finalDir, newName)
+
+                const image = await (Jimp as any).read(file.path)
+                const rgba = new Uint8ClampedArray(
+                    image.bitmap.data.buffer,
+                    image.bitmap.data.byteOffset,
+                    image.bitmap.data.byteLength,
+                )
+                await ensureWebpEncodeInit()
+                const webpBytes = await encode({
+                    data: rgba,
+                    width: image.bitmap.width,
+                    height: image.bitmap.height,
+                    colorSpace: "srgb",
+                } as any)
+                const outBytes = webpBytes instanceof ArrayBuffer ? new Uint8Array(webpBytes) : webpBytes
+                await fs.promises.writeFile(outputPath, outBytes)
+            }
+
+            toast.style = Toast.Style.Success
+            toast.title = "Conversion Complete"
+            toast.message = `Converted ${selectedFiles.length} image(s) to WebP`
+            fetchSelectedFiles()
+        } catch (error) {
+            toast.style = Toast.Style.Failure
+            toast.title = "Conversion Failed"
             toast.message = String(error)
         }
     }
@@ -199,16 +284,14 @@ export default function Command() {
                                             }
                                         />
                                         <Action
-                                            title="To WebP"
-                                            onAction={() =>
-                                                handleJimpProcess(() => {}, "_converted", { format: "webp" })
-                                            }
-                                        />
-                                        <Action
                                             title="To BMP"
                                             onAction={() =>
                                                 handleJimpProcess(() => {}, "_converted", { format: "bmp" })
                                             }
+                                        />
+                                        <Action
+                                            title="To WebP"
+                                            onAction={() => handleConvertToWebP("_converted")}
                                         />
                                     </ActionPanel.Submenu>
 
@@ -413,6 +496,7 @@ function PadForm({ onProcess }: { onProcess: any }) {
 }
 
 function OptimizeForm({ onProcess }: { onProcess: any }) {
+    const { defaultJpegQuality } = getPreferenceValues<ImageEditorPreferences>()
     const { pop } = useNavigation()
     return (
         <Form
@@ -433,7 +517,7 @@ function OptimizeForm({ onProcess }: { onProcess: any }) {
                 id="quality"
                 title="JPEG Quality (1–100)"
                 placeholder="Lower = smaller file"
-                defaultValue="75"
+                defaultValue={defaultJpegQuality}
             />
             <Form.Description text="For JPEG images, reduces quality to shrink file size. PNG and other lossless formats will be re-encoded to strip metadata." />
         </Form>
@@ -441,6 +525,7 @@ function OptimizeForm({ onProcess }: { onProcess: any }) {
 }
 
 function SuperResolutionForm({ file, runNpuCommand }: { file: SelectedFile; runNpuCommand: any }) {
+    const { defaultScaleFactor } = getPreferenceValues<ImageEditorPreferences>()
     const { pop } = useNavigation()
     return (
         <Form
@@ -456,7 +541,7 @@ function SuperResolutionForm({ file, runNpuCommand }: { file: SelectedFile; runN
                 </ActionPanel>
             }
         >
-            <Form.Dropdown id="factor" title="Scale Factor" defaultValue="2">
+            <Form.Dropdown id="factor" title="Scale Factor" defaultValue={defaultScaleFactor}>
                 <Form.Dropdown.Item value="2" title="2x" />
                 <Form.Dropdown.Item value="4" title="4x" />
             </Form.Dropdown>

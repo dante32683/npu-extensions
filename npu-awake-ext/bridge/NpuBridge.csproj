@@ -5,7 +5,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <SelfContained>true</SelfContained>
-    <PublishAot>false</PublishAot>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -21,3 +20,4 @@
     <None Include="Package.appxmanifest" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
+

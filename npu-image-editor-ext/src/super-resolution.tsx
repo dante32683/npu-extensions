@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @raycast/prefer-title-case */
-import { Form, ActionPanel, Action, showToast, Toast, environment, Icon } from "@raycast/api"
+import { Form, ActionPanel, Action, getPreferenceValues, showToast, Toast, environment, Icon } from "@raycast/api"
 import { useEffect, useState } from "react"
 import { execFile } from "child_process"
 import { promisify } from "util"
@@ -10,7 +10,12 @@ import { getSelectedExplorerFiles, SelectedFile } from "./utils/powershell-utils
 const execFileAsync = promisify(execFile)
 const BRIDGE_PATH = path.join(environment.assetsPath, "bin", "NpuBridge.exe")
 
+interface Preferences {
+    defaultScaleFactor: string
+}
+
 export default function Command() {
+    const { defaultScaleFactor } = getPreferenceValues<Preferences>()
     const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
@@ -25,7 +30,7 @@ export default function Command() {
 
     async function handleUpscale(values: { factor: string }) {
         if (selectedFiles.length === 0) {
-            await showToast({ style: Toast.Style.Failure, title: "No images selected" })
+            await showToast({ style: Toast.Style.Failure, title: "No Images Selected" })
             return
         }
 
@@ -62,11 +67,11 @@ export default function Command() {
                 successCount++
             }
             toast.style = Toast.Style.Success
-            toast.title = "Success"
+            toast.title = "Upscaling Complete"
             toast.message = `Upscaled ${successCount} image(s)`
         } catch (error: any) {
             toast.style = Toast.Style.Failure
-            toast.title = "Upscaling failed"
+            toast.title = "Upscaling Failed"
             const msg =
                 error?.code === "UNKNOWN"
                     ? `Bridge failed to start. Rebuild: cd bridge && dotnet publish -c Release -r win-x64 --self-contained true`
@@ -87,7 +92,7 @@ export default function Command() {
                 </ActionPanel>
             }
         >
-            <Form.Dropdown id="factor" title="Scale Factor" defaultValue="2">
+            <Form.Dropdown id="factor" title="Scale Factor" defaultValue={defaultScaleFactor}>
                 <Form.Dropdown.Item value="2" title="2x" />
                 <Form.Dropdown.Item value="4" title="4x" />
             </Form.Dropdown>

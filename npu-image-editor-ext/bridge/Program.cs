@@ -11,8 +11,6 @@ using Windows.Storage;
 using Windows.Storage.Streams;
 using WinRT;
 
-#pragma warning disable CS8305 // experimental APIs
-
 namespace NpuBridge
 {
     class Program
@@ -77,10 +75,10 @@ namespace NpuBridge
             if (!File.Exists(inputPath))
                 throw new FileNotFoundException("Input image not found.", inputPath);
 
-            if (ImageForegroundExtractor.GetReadyState() != AIFeatureReadyState.Ready)
+            if (ImageObjectExtractor.GetReadyState() != AIFeatureReadyState.Ready)
             {
                 Console.Error.WriteLine("[NpuBridge] Model not ready — calling EnsureReadyAsync (may take a moment on first run)...");
-                var readyResult = await ImageForegroundExtractor.EnsureReadyAsync();
+                var readyResult = await ImageObjectExtractor.EnsureReadyAsync();
                 if (readyResult.Status != AIFeatureReadyResultState.Success)
                     throw new Exception($"NPU segmentation model unavailable: {readyResult.Status}");
             }
@@ -95,8 +93,12 @@ namespace NpuBridge
                 source = await decoder.GetSoftwareBitmapAsync();
             }
 
-            using var extractor = await ImageForegroundExtractor.CreateAsync();
-            SoftwareBitmap mask = extractor.GetMaskFromSoftwareBitmap(source);
+            using var extractor = await ImageObjectExtractor.CreateWithSoftwareBitmapAsync(source);
+            var hint = new ImageObjectExtractorHint(
+                null,
+                new List<Windows.Graphics.PointInt32> { new(source.PixelWidth / 2, source.PixelHeight / 2) },
+                null);
+            SoftwareBitmap mask = extractor.GetSoftwareBitmapObjectMask(hint);
 
             // Composite: apply mask as alpha channel → transparent PNG
             SoftwareBitmap result = ApplyMaskAsAlpha(source, mask);

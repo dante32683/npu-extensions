@@ -1,20 +1,25 @@
-import { showToast, Toast } from "@raycast/api"
-import { getKeeperStatus, startKeeper, stopKeeper } from "./utils/keeper-utils"
+import { getPreferenceValues, showToast, Toast } from "@raycast/api"
+import { getKeeperStatus, setOverride } from "./utils/keeper-utils"
+
+interface Preferences {
+    defaultAwakeMode: "indefinite" | "screen-off"
+}
 
 export default async function Command() {
+    const { defaultAwakeMode } = getPreferenceValues<Preferences>()
     const status = await getKeeperStatus()
 
-    if (status && status.mode === "indefinite") {
-        await stopKeeper()
+    if (status.override && status.override.mode === defaultAwakeMode && !status.override.expiryEpochSeconds) {
+        await setOverride(null)
         await showToast({
             style: Toast.Style.Success,
-            title: "PC can now sleep",
+            title: "PC Can Now Sleep",
         })
     } else {
-        await startKeeper("indefinite")
+        await setOverride({ mode: defaultAwakeMode })
         await showToast({
             style: Toast.Style.Success,
-            title: "PC will stay awake indefinitely",
+            title: defaultAwakeMode === "screen-off" ? "PC Awake, Display Can Sleep" : "PC Will Stay Awake Indefinitely",
         })
     }
 }

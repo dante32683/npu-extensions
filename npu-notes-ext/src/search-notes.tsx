@@ -4,5 +4,9 @@ import { List } from "@raycast/api"
 // See FEATURE_PLAN.md § "Search Notes (stretch goal)"
 
 export default function Command() {
-    return <List searchBarPlaceholder="Search your notes..." isLoading={false} />
+    return (
+        <List searchBarPlaceholder="Search your notes..." isLoading={false}>
+            <List.EmptyView title="WIP" description="Note search is not yet implemented." />
+        </List>
+    )
 }

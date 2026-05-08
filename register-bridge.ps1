@@ -15,6 +15,11 @@ $bridges = @(
         Name = "NPU Notes Bridge"
         Bin = "npu-notes-ext\assets\bin"
         Manifest = "npu-notes-ext\bridge\Package.appxmanifest"
+    },
+    @{
+        Name = "NPU Awake Bridge"
+        Bin = "npu-awake-ext\assets\bin"
+        Manifest = "npu-awake-ext\bridge\Package.appxmanifest"
     }
 )
 

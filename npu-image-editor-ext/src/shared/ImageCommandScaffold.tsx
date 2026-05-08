@@ -25,8 +25,8 @@ export function ImageCommandScaffold({ title, actionTitle }: ImageCommandScaffol
 
     const showPendingToast = async () => {
         await showToast({
-            style: Toast.Style.Failure,
-            title: "Command implementation pending",
+            style: Toast.Style.Animated,
+            title: "Command Implementation Pending",
             message: "This command is scaffolded; implementation is tracked in FEATURE_PLAN.md.",
         })
     }

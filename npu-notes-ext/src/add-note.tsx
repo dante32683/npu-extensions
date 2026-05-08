@@ -32,14 +32,14 @@ export default function Command() {
     const handleSubmit = async (values: FormValues) => {
         const rawNote = values.note.trim()
         if (!rawNote) {
-            await showToast({ style: Toast.Style.Failure, title: "No note provided" })
+            await showToast({ style: Toast.Style.Failure, title: "No Note Provided" })
             return
         }
 
         if (!fs.existsSync(BRIDGE_PATH)) {
             await showToast({
                 style: Toast.Style.Failure,
-                title: "Bridge not found",
+                title: "Bridge Not Found",
                 message: "Run: dotnet publish -c Release -r win-x64 --self-contained true",
             })
             return
@@ -100,7 +100,7 @@ export default function Command() {
             }
         } catch (err: unknown) {
             toast.style = Toast.Style.Failure
-            toast.title = "Phi-Silica error"
+            toast.title = "Phi-Silica Error"
             toast.message = err instanceof Error ? err.message : String(err)
         } finally {
             if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile)
