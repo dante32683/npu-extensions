@@ -10,7 +10,13 @@
         {
             "name": "open-workspace",
             "title": "Open Workspace",
-            "description": "Pick or auto-detect a folder, then open it in Explorer, a terminal, or your IDE.",
+            "description": "Open the current Explorer folder or a subfolder workspace in Explorer, a terminal, and/or your IDE.",
+            "mode": "view"
+        },
+        {
+            "name": "workspace-history",
+            "title": "Workspace History",
+            "description": "Open and manage previously used workspaces.",
             "mode": "view"
         },
         {
@@ -29,6 +35,20 @@
         }
     ],
     "preferences": [
+        {
+            "name": "defaultOpenTarget",
+            "title": "Default Open Action",
+            "description": "Which action to run for the primary 'Open (Default)' action.",
+            "type": "dropdown",
+            "required": false,
+            "default": "ide",
+            "data": [
+                { "title": "Open in IDE", "value": "ide" },
+                { "title": "Open in Terminal", "value": "terminal" },
+                { "title": "Open in Explorer", "value": "explorer" },
+                { "title": "Open All", "value": "all" }
+            ]
+        },
         {
             "name": "terminalChoice",
             "title": "Terminal",

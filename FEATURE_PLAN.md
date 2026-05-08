@@ -118,6 +118,8 @@ These files needed updating before the respective extensions could run in `npm r
 
 > **Status (2026-05-07):** Items **#1 Super Resolution**, **#2 OCR**, **#3 Phi-Silica Text Tools**, and **#4 Smart Note Taker** are implemented. **#5 Awake** is currently being redesigned as **Smart Awake** to incorporate NPU-powered natural language schedule parsing. Next up after the redesign is **#6 Sticker Maker**. Items **#9** and **#10** are new additions to the roadmap. The PENDING `package.json` section below remains historical reference.
 
+> **Status update (2026-05-08):** **#5 Smart Awake** has shipped (Phi intent extractor + persistent schedules + keeper daemon — see `npu-awake-ext/`). **#6 Sticker Maker (basic)** has shipped. **#7 Sticker Maker (manual focus)** and **#8 Search Notes** are deferred. **#9 NPU Dev Toolbox** is being implemented now with an expanded v1 scope: commit-message generation **plus** an Open Workspace command (open chosen folder in Explorer, a configurable terminal, and a configurable IDE).
+
 ---
 
 ## ~~1. Super Resolution~~
@@ -518,6 +520,10 @@ These can live as a doc + fixtures first, then become executable tests later.
 ---
 
 ## 6. Sticker Maker
+> **Completed by GPT-5.2 (2026-05-08).**
+> - Implemented `make-sticker` end-to-end: bridge extracts foreground + bounding box crop (with center-crop fallback) and writes `_sticker_raw.png`; TS letterboxes to 480×480 and encodes `_sticker.webp`.
+> - Added an input-size guard (downscale to ≤2048px long edge before segmentation) and deletes the intermediate PNG after encoding the WebP.
+
 **Extension:** `npu-image-editor-ext`
 **New files:** `src/make-sticker.tsx`, new `case "make-sticker"` in `bridge/Program.cs`
 
@@ -529,8 +535,8 @@ Converts an image into a 480×480 transparent WebP sticker. NPU removes the back
 **User flow:**
 1. Select one image in Explorer
 2. Run "Make Sticker" command (or action inside Modify Image)
-3. Bridge: remove background → find subject bounding box → crop → resize → output WebP
-4. Output: `<name>_sticker.webp` next to source
+3. Bridge: remove background → find subject bounding box → crop → output `_sticker_raw.png` (transparent PNG)
+4. TS: letterbox to 480×480 → encode WebP → output `<name>_sticker.webp` next to source
 5. Toast warning if no clear subject: "No clear subject detected — center crop used. Use 'Make Sticker (Manual Focus)' for better results."
 
 **Crop algorithm:**
@@ -539,8 +545,8 @@ Converts an image into a 480×480 transparent WebP sticker. NPU removes the back
 3. Add 10% padding on all sides (clamped to image bounds)
 4. If bounding box covers >80% of image → fallback: use center crop, show warning toast
 5. Crop source to padded bounding box
-6. Resize to 480×480 using `Jimp.resize()` — letterbox with transparent fill if not square
-7. Encode as WebP via Jimp (TypeScript side handles this — bridge outputs PNG, TS re-encodes to WebP)
+6. Resize to 480×480 in TS (letterbox with transparent fill if not square)
+7. Encode as WebP in TS using the suite’s `@jsquash/webp`-based encoder (not Jimp)
 
 **Bridge command:**
 ```
@@ -599,10 +605,57 @@ TS side re-encodes the PNG to WebP via Jimp and writes final `_sticker.webp`.
 
 ---
 
-## 9. NPU Dev Toolbox — Git Commit (auto-detect repo)
+## 9. NPU Dev Toolbox — Git Commit + Workspace Actions (auto-detect repo)
 
 **Extension:** `npu-dev-toolbox-ext` (new — to be scaffolded)
-**New files:** `package.json`, `bridge/Program.cs`, `bridge/Package.appxmanifest`, `src/commit-message.tsx`, `src/utils/foreground-context.ts`, `src/utils/git.ts`, `src/utils/run-bridge.ts`, `src/utils/ensure-bridge-registered.ts` (copy of the canonical helper).
+**New files (v1, expanded 2026-05-08; revised 2026-05-08):** `package.json`, `tsconfig.json`, `raycast-env.d.ts`, `.eslintrc`, `.prettierrc`, `assets/extension-icon.png`, `bridge/NpuBridge.csproj`, `bridge/Program.cs`, `bridge/Package.appxmanifest`, `bridge/app.manifest`, `src/commit-message.tsx`, `src/open-workspace.tsx`, `src/workspace-history.tsx`, `src/utils/foreground-context.ts`, `src/utils/git.ts`, `src/utils/run-bridge.ts`, `src/utils/launchers.ts`, `src/utils/explorer.ts`, `src/utils/last-explorer-folder.ts`, `src/utils/recent-workspaces.ts`, `src/utils/ensure-bridge-registered.ts` (copy of the canonical helper).
+
+### v1 surface (expanded 2026-05-08; revised 2026-05-08)
+
+The toolbox ships **three** Raycast commands and one shared sparse-package bridge:
+
+1. **Open Workspace** (`open-workspace`, `mode: "view"`) — work from the **current Explorer folder**, then open a folder in one or more tools. Sections:
+   - **Current Explorer Folder** — “last interacted” Explorer folder:
+     - Uses a best-effort COM enumeration of open Explorer windows (`Shell.Application`) and takes the last enumerated window’s `LocationURL` as the current folder.
+     - Persists to `LocalStorage` under `last-explorer-folder` so the command still works even when no Explorer window is currently open.
+   - **Workspaces in Current Folder** — one-level list of subfolders of the current Explorer folder (treat each subfolder as a workspace).
+   - **Browse** — a directory picker (`Form.FilePicker canChooseDirectories`) to set the current folder manually (also updates `last-explorer-folder`).
+   - **Actions (every item)**:
+     - **Open (Default)** (preference-driven; see below)
+     - **Open in IDE**, **Open in Terminal**, **Open in Explorer**, **Open All**
+     - **Browse Subfolders…** (drill-down)
+     - **Copy Path**
+     - Any successful open action pushes the target folder into workspace history (move-to-front, max 20).
+2. **Workspace History** (`workspace-history`, `mode: "view"`) — memory of previously opened folders.
+   - Backed by `LocalStorage` key `recent-workspaces` (up to 20, move-to-front).
+   - Each item exposes the same open actions as Open Workspace, plus:
+     - **Remove from History**
+     - **Clear History** (confirm)
+3. **Commit Message** (`commit-message`, `mode: "view"`) — original Plan 9 flow (see "User flow" below). Action panel order: **Copy to Clipboard** → **Copy & Run `git commit`** → **Regenerate** → **Open Repo in Explorer** → **Open Repo in Terminal** → **Open Repo in IDE**. The last three reuse `launchers.ts`.
+
+### Preferences (Raycast UI, defined in `package.json` `preferences`)
+
+- `defaultOpenTarget` (dropdown, default `ide`): `Open in IDE`, `Open in Terminal`, `Open in Explorer`, `Open All`. Used by **Open (Default)** action in both `open-workspace` and `workspace-history`.
+- `terminalChoice` (dropdown, default `wt`): `Windows Terminal (wt)`, `PowerShell 7 (pwsh)`, `Windows PowerShell (powershell)`, `Command Prompt (cmd)`, `Custom Path (custom)`.
+- `terminalNewTab` (checkbox, default off) — only honored when `terminalChoice = wt`. On = `wt -w 0 -d <path>` (new tab in existing window); off = new window.
+- `terminalCustomPath` (textfield) — full path to a `.exe` or `.lnk`. Used only when `terminalChoice = custom`.
+- `ideChoice` (dropdown, default `cursor`): `Cursor (cursor)`, `VS Code (code)`, `Windsurf (windsurf)`, `IntelliJ IDEA (idea)`, `PyCharm (pycharm)`, `WebStorm (webstorm)`, `Rider (rider)`, `Sublime Text (subl)`, `Notepad++ (notepad++)`, `Custom Path (custom)`.
+- `ideCustomPath` (textfield) — full path to a `.exe` or `.lnk`. Used only when `ideChoice = custom`.
+- `commitStyle` (dropdown, default `conventional`): `Conventional Commits` / `Plain`.
+
+### Launchers contract (`src/utils/launchers.ts`)
+
+Three pure functions, each returns `{ ok: true } | { ok: false, error }`. They never throw; the UI layer translates errors into `Toast.Style.Failure` per § Suite UX conventions.
+
+- `openInExplorer(folderPath)` — `spawn("explorer.exe", [folderPath])`, detached + unref'd.
+- `openInTerminal(folderPath, prefs)`:
+  - `wt` → `wt.exe ["-d", folderPath]` (or `["-w", "0", "-d", folderPath]` if `terminalNewTab`).
+  - `pwsh` / `powershell` → spawn the exe with `["-NoExit", "-Command", "Set-Location -LiteralPath '<path>'"]`, detached, visible window.
+  - `cmd` → `cmd.exe ["/K", "cd", "/d", folderPath]`, detached, visible window.
+  - `custom` → `.lnk`: `powershell.exe -NoProfile -Command "Invoke-Item -Path '<path>'"` (best-effort; shortcuts can't always accept args). `.exe`: `spawn(customExe, [folderPath])` with `cwd: folderPath`.
+- `openInIde(folderPath, prefs)` — for known keys, prefer the documented launcher CLI (`code`, `cursor`, `windsurf`, `idea`, `pycharm`, `webstorm`, `rider`, `subl`, `notepad++`) and call `<launcher> <folderPath>`. Resolution order: PATH first, then well-known install locations (`%LOCALAPPDATA%\Programs\Microsoft VS Code\bin\code.cmd`, `%LOCALAPPDATA%\Programs\cursor\Cursor.exe`, `%LOCALAPPDATA%\Programs\Windsurf\Windsurf.exe`, JetBrains Toolbox `%LOCALAPPDATA%\Programs\<IDE>\bin\<launcher>.bat`, `%PROGRAMFILES%\<IDE>\bin\<launcher>.bat`). Custom: same `.lnk` vs `.exe` handling as terminal.
+
+All three guard against missing/non-directory paths and return a structured error.
 
 ### What it does
 

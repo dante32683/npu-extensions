@@ -8,6 +8,8 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 type ExtensionPreferences = {
+  /** Default Open Action - Which action to run for the primary 'Open (Default)' action. */
+  "defaultOpenTarget": "ide" | "terminal" | "explorer" | "all",
   /** Terminal - Which terminal to launch when 'Open in Terminal' is run. */
   "terminalChoice": "wt" | "pwsh" | "powershell" | "cmd" | "custom",
   /** Windows Terminal - When enabled, Windows Terminal opens a new tab in an existing window instead of a new window. */
@@ -28,6 +30,8 @@ declare type Preferences = ExtensionPreferences
 declare namespace Preferences {
   /** Preferences accessible in the `open-workspace` command */
   export type OpenWorkspace = ExtensionPreferences & {}
+  /** Preferences accessible in the `workspace-history` command */
+  export type WorkspaceHistory = ExtensionPreferences & {}
   /** Preferences accessible in the `commit-message` command */
   export type CommitMessage = ExtensionPreferences & {}
 }
@@ -35,6 +39,8 @@ declare namespace Preferences {
 declare namespace Arguments {
   /** Arguments passed to the `open-workspace` command */
   export type OpenWorkspace = {}
+  /** Arguments passed to the `workspace-history` command */
+  export type WorkspaceHistory = {}
   /** Arguments passed to the `commit-message` command */
   export type CommitMessage = {
   /** optional repo path */

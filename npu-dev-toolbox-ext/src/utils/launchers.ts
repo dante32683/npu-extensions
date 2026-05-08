@@ -1,4 +1,4 @@
-import { spawn } from "child_process"
+import { spawn, spawnSync } from "child_process"
 import fs from "fs"
 import path from "path"
 
@@ -107,7 +107,9 @@ export function openInTerminal(folderPath: string, prefs: LauncherPrefs): Launch
 
 const KNOWN_IDE_LAUNCHERS: Record<Exclude<IdeChoice, "custom">, string[]> = {
     cursor: [
+        "%LOCALAPPDATA%\\Programs\\Cursor\\Cursor.exe",
         "%LOCALAPPDATA%\\Programs\\cursor\\Cursor.exe",
+        "%LOCALAPPDATA%\\Cursor\\Cursor.exe",
         "%LOCALAPPDATA%\\Programs\\cursor\\resources\\app\\bin\\cursor.cmd",
     ],
     code: [
@@ -167,6 +169,15 @@ function findExistingPath(candidates: string[]): string | null {
     return null
 }
 
+function commandExistsOnPath(command: string): boolean {
+    try {
+        const result = spawnSync("where.exe", [command], { windowsHide: true, stdio: "ignore" })
+        return result.status === 0
+    } catch {
+        return false
+    }
+}
+
 export function openInIde(folderPath: string, prefs: LauncherPrefs): LauncherOutcome {
     const dir = ensureDirectory(folderPath)
     if (!dir.ok) return dir
@@ -183,9 +194,14 @@ export function openInIde(folderPath: string, prefs: LauncherPrefs): LauncherOut
     }
 
     // Fall back to the documented launcher command on PATH (e.g. `code`, `cursor`).
-    // We can't verify it exists here, so this is best-effort; if the user has no PATH
-    // entry, the new shell window will surface the error themselves.
     const cmdName = KNOWN_IDE_PATH_COMMANDS[prefs.ideChoice]
+    if (!commandExistsOnPath(cmdName)) {
+        const label = prefs.ideChoice === "cursor" ? "Cursor" : cmdName
+        return {
+            ok: false,
+            error: `Can't find ${label} launcher on PATH. Either install the ${label} CLI launcher, or set IDE to "Custom Path" in extension preferences.`,
+        }
+    }
     return startViaCmd(cmdName, [folderPath], folderPath)
 }
 

@@ -47,24 +47,53 @@ using System.Runtime.InteropServices;
 using System.Text;
 public static class _User32 {
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
 }
 '@
 
+$GW_HWNDNEXT = 2
 $hwnd = [_User32]::GetForegroundWindow()
-$pidOut = 0
-[void][_User32]::GetWindowThreadProcessId($hwnd, [ref]$pidOut)
 
-$titleBuf = New-Object System.Text.StringBuilder 1024
-[void][_User32]::GetWindowText($hwnd, $titleBuf, $titleBuf.Capacity)
-$title = $titleBuf.ToString()
+for ($i = 0; $i -lt 32; $i++) {
+    if ($hwnd -eq [IntPtr]::Zero) { break }
+    if (-not [_User32]::IsWindowVisible($hwnd)) {
+        $hwnd = [_User32]::GetWindow($hwnd, $GW_HWNDNEXT)
+        continue
+    }
 
-$proc = Get-CimInstance Win32_Process -Filter "ProcessId=$pidOut" -ErrorAction SilentlyContinue
-$exe = ($proc.Name -as [string])
+    $pidOut = 0
+    [void][_User32]::GetWindowThreadProcessId($hwnd, [ref]$pidOut)
+    if ($pidOut -le 0) {
+        $hwnd = [_User32]::GetWindow($hwnd, $GW_HWNDNEXT)
+        continue
+    }
 
-[pscustomobject]@{ Pid = $pidOut; Exe = $exe; Title = $title } | ConvertTo-Json -Compress
+    $titleBuf = New-Object System.Text.StringBuilder 1024
+    [void][_User32]::GetWindowText($hwnd, $titleBuf, $titleBuf.Capacity)
+    $title = $titleBuf.ToString()
+
+    $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$pidOut" -ErrorAction SilentlyContinue
+    $exe = ($proc.Name -as [string])
+    if (-not $exe) {
+        $hwnd = [_User32]::GetWindow($hwnd, $GW_HWNDNEXT)
+        continue
+    }
+
+    $exeLower = $exe.ToLowerInvariant()
+    if ($exeLower -eq 'raycast.exe' -or $exeLower -eq 'raycast') {
+        $hwnd = [_User32]::GetWindow($hwnd, $GW_HWNDNEXT)
+        continue
+    }
+
+    [pscustomobject]@{ Pid = $pidOut; Exe = $exe; Title = $title } | ConvertTo-Json -Compress
+    exit 0
+}
+
+''
 `
 
 const SCRIPT_GET_CHILD_SHELL = `
