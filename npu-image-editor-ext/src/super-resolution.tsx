@@ -1,14 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @raycast/prefer-title-case */
-import { Form, ActionPanel, Action, getPreferenceValues, showToast, Toast, environment, Icon } from "@raycast/api"
+import { Action, ActionPanel, Form, Icon, Toast, getPreferenceValues, showToast } from "@raycast/api"
 import { useEffect, useState } from "react"
-import { execFile } from "child_process"
-import { promisify } from "util"
-import path from "path"
-import fs from "fs"
-import { getSelectedExplorerFiles, SelectedFile } from "./utils/powershell-utils"
+import { SelectedFile, getSelectedExplorerFiles } from "./utils/powershell-utils"
+import { runNpuCommand } from "./utils/run-npu-command"
 
-const execFileAsync = promisify(execFile)
-const BRIDGE_PATH = path.join(environment.assetsPath, "bin", "NpuBridge.exe")
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".gif", ".webp"]
 
 interface Preferences {
     defaultScaleFactor: string
@@ -21,7 +16,7 @@ export default function Command() {
 
     useEffect(() => {
         async function fetchFiles() {
-            const images = await getSelectedExplorerFiles([".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".gif", ".webp"])
+            const images = await getSelectedExplorerFiles(IMAGE_EXTENSIONS)
             setSelectedFiles(images)
             setIsLoading(false)
         }
@@ -36,47 +31,30 @@ export default function Command() {
 
         const toast = await showToast({
             style: Toast.Style.Animated,
-            title: `Running NPU Super Resolution...`,
+            title: "Running NPU Super Resolution...",
             message: "First run may take a moment to prepare the NPU model.",
         })
 
-        if (!fs.existsSync(BRIDGE_PATH)) {
-            toast.style = Toast.Style.Failure
-            toast.title = "Bridge Not Found"
-            toast.message = `NpuBridge.exe missing. Run: dotnet publish -c Release -r win-x64 --self-contained true`
-            return
+        let successCount = 0
+        let firstError: string | null = null
+
+        for (const file of selectedFiles) {
+            const outcome = await runNpuCommand("super-resolution", [file.path, values.factor])
+            if (outcome.ok) {
+                successCount++
+            } else if (firstError === null) {
+                firstError = outcome.error
+            }
         }
 
-        let successCount = 0
-        try {
-            for (const file of selectedFiles) {
-                const { stdout, stderr } = await execFileAsync(
-                    BRIDGE_PATH,
-                    ["super-resolution", file.path, values.factor],
-                    {
-                        cwd: path.dirname(BRIDGE_PATH),
-                        windowsHide: true,
-                    },
-                )
-
-                if (stderr) console.error("[NpuBridge]", stderr)
-                const result = JSON.parse(stdout)
-                if (result.status !== "success") {
-                    throw new Error(result.message)
-                }
-                successCount++
-            }
+        if (firstError === null) {
             toast.style = Toast.Style.Success
-            toast.title = "Upscaling Complete"
-            toast.message = `Upscaled ${successCount} image(s)`
-        } catch (error: any) {
+            toast.title = "Super Resolution Complete"
+            toast.message = `Upscaled ${successCount} image(s).`
+        } else {
             toast.style = Toast.Style.Failure
-            toast.title = "Upscaling Failed"
-            const msg =
-                error?.code === "UNKNOWN"
-                    ? `Bridge failed to start. Rebuild: cd bridge && dotnet publish -c Release -r win-x64 --self-contained true`
-                    : String(error)
-            toast.message = msg
+            toast.title = "Super Resolution Failed"
+            toast.message = firstError
         }
     }
 

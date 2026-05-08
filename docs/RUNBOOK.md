@@ -97,7 +97,7 @@ Use for on-device text generation when the feature is backed by `Microsoft.Windo
 
 When working in **`npu-image-editor-ext/bridge/Program.cs`**:
 
-- **Background removal** — `ImageForegroundExtractor` readiness → mask → alpha via pixel buffer access; watch CsWinRT/COM casting issues.
+- **Background removal** — `ImageObjectExtractor` readiness → mask → alpha via pixel buffer access; watch CsWinRT/COM casting issues. (Older Microsoft docs / drafts call this `ImageForegroundExtractor`; the WAS 2.0-experimental class shipped under the `ImageObjectExtractor` name.)
 - **Super resolution** — `ImageScaler` readiness; respect scale limits per OS/hardware.
 - **OCR** — `SoftwareBitmap` → **Bgra8** for `OcrEngine`; dimension limits per docs.
 

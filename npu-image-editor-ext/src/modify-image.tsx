@@ -1,57 +1,29 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @raycast/prefer-title-case */
-import { Action, ActionPanel, getPreferenceValues, Icon, List, showToast, Toast, useNavigation, environment, Form } from "@raycast/api"
-import { useEffect, useState, useCallback } from "react"
-import { execFile } from "child_process"
-import { promisify } from "util"
+import {
+    Action,
+    ActionPanel,
+    Form,
+    Icon,
+    List,
+    Toast,
+    getPreferenceValues,
+    showToast,
+    useNavigation,
+} from "@raycast/api"
+import { useCallback, useEffect, useState } from "react"
 import path from "path"
 import fs from "fs"
 import os from "os"
 import { Jimp } from "jimp"
-import encode, { init as initWebpEncode } from "@jsquash/webp/encode"
-import { simd } from "wasm-feature-detect"
-import { getSelectedExplorerFiles, getClipboardImage, SelectedFile } from "./utils/powershell-utils"
 import { ExtractTextForm } from "./extract-text"
-import { ensureBridgeRegisteredOnce } from "./utils/ensure-bridge-registered"
-
-const execFileAsync = promisify(execFile)
-
-const BRIDGE_PATH = path.join(environment.assetsPath, "bin", "NpuBridge.exe")
-const BRIDGE_BIN_DIR = path.join(environment.assetsPath, "bin")
-const BRIDGE_MANIFEST_SOURCE = path.join(environment.assetsPath, "..", "bridge", "Package.appxmanifest")
-const BRIDGE_IDENTITY = "NpuBridge.Identity"
+import { SelectedFile, getClipboardImage, getSelectedExplorerFiles } from "./utils/powershell-utils"
+import { runNpuCommand, toFriendlyCommandName } from "./utils/run-npu-command"
+import { encodeRgbaToWebp } from "./utils/webp-encoder"
 
 interface ImageEditorPreferences {
     defaultScaleFactor: string
     defaultJpegQuality: string
     clipboardOutputDir?: string
-}
-
-let webpEncodeInit: Promise<unknown> | undefined
-
-function ensureWebpEncodeInit(): Promise<void> {
-    if (!webpEncodeInit) {
-        webpEncodeInit = (async () => {
-            const useSimd = await simd().catch(() => false)
-            const wasmFile = useSimd ? "webp_enc_simd.wasm" : "webp_enc.wasm"
-            const wasmPath = path.join(environment.assetsPath, "webp", wasmFile)
-            if (!fs.existsSync(wasmPath)) {
-                throw new Error(
-                    `WebP encoder wasm missing: ${wasmPath}. Rebuild the extension so assets/webp/*.wasm are included.`,
-                )
-            }
-
-            const wasmBytes = await fs.promises.readFile(wasmPath)
-            const wasmU8 = new Uint8Array(wasmBytes.buffer, wasmBytes.byteOffset, wasmBytes.byteLength)
-            const wasmModule = await WebAssembly.compile(wasmU8 as any)
-
-            // Passing a compiled module avoids any URL parsing / fetch-based loading.
-            await (initWebpEncode as any)(wasmModule as any, {
-                // Prevent Emscripten glue from doing `new URL("*.wasm", import.meta.url)` in Raycast.
-                locateFile: (filename: string) => filename,
-            } as any)
-        })()
-    }
-    return webpEncodeInit as Promise<void>
 }
 
 function hexToJimpColor(hex: string): number {
@@ -97,56 +69,24 @@ export default function Command() {
         }
     }
 
-    const runNpuCommand = async (command: string, file: SelectedFile, extraArgs: string[] = []) => {
-        const friendlyName = command
-            .split("-")
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(" ")
+    const runImageNpuAction = async (command: string, file: SelectedFile, extraArgs: string[] = []) => {
+        const friendlyName = toFriendlyCommandName(command)
         const toast = await showToast({
             style: Toast.Style.Animated,
             title: `Running NPU ${friendlyName}...`,
             message: "First run may take a moment to prepare the NPU model.",
         })
 
-        if (!fs.existsSync(BRIDGE_PATH)) {
+        const outcome = await runNpuCommand(command, [file.path, ...extraArgs])
+        if (outcome.ok) {
+            toast.style = Toast.Style.Success
+            toast.title = `${friendlyName} Complete`
+            toast.message = outcome.result.message ?? "Processing finished."
+            fetchSelectedFiles()
+        } else {
             toast.style = Toast.Style.Failure
-            toast.title = "Bridge Not Found"
-            toast.message = `NpuBridge.exe missing. Run: dotnet publish -c Release -r win-x64 --self-contained true`
-            return
-        }
-
-        try {
-            await ensureBridgeRegisteredOnce({
-                identityName: BRIDGE_IDENTITY,
-                binDir: BRIDGE_BIN_DIR,
-                manifestSourcePath: BRIDGE_MANIFEST_SOURCE,
-            })
-
-            const { stdout, stderr } = await execFileAsync(BRIDGE_PATH, [command, file.path, ...extraArgs], {
-                cwd: path.dirname(BRIDGE_PATH),
-                windowsHide: true,
-            })
-
-            if (stderr) console.error("[NpuBridge]", stderr)
-
-            const result = JSON.parse(stdout)
-
-            if (result.status === "success") {
-                toast.style = Toast.Style.Success
-                toast.title = `${friendlyName} Complete`
-                toast.message = result.message
-                fetchSelectedFiles()
-            } else {
-                throw new Error(result.message)
-            }
-        } catch (error: any) {
-            toast.style = Toast.Style.Failure
-            toast.title = "NPU Processing Failed"
-            const msg =
-                error?.code === "UNKNOWN"
-                    ? `Bridge failed to start. Rebuild: cd bridge && dotnet publish -c Release -r win-x64 --self-contained true`
-                    : String(error)
-            toast.message = msg
+            toast.title = `${friendlyName} Failed`
+            toast.message = outcome.error
         }
     }
 
@@ -169,7 +109,7 @@ export default function Command() {
                 const newName = `${path.basename(file.name, file.extension)}${suffix}${targetExt}`
 
                 const finalDir = file.name.startsWith("clipboard_")
-                    ? (clipboardOutputDir || path.join(os.homedir(), "Desktop"))
+                    ? clipboardOutputDir || path.join(os.homedir(), "Desktop")
                     : dir
                 const outputPath = path.join(finalDir, newName)
 
@@ -206,7 +146,7 @@ export default function Command() {
                 const newName = `${path.basename(file.name, file.extension)}${suffix}.webp`
 
                 const finalDir = file.name.startsWith("clipboard_")
-                    ? (clipboardOutputDir || path.join(os.homedir(), "Desktop"))
+                    ? clipboardOutputDir || path.join(os.homedir(), "Desktop")
                     : dir
                 const outputPath = path.join(finalDir, newName)
 
@@ -216,14 +156,7 @@ export default function Command() {
                     image.bitmap.data.byteOffset,
                     image.bitmap.data.byteLength,
                 )
-                await ensureWebpEncodeInit()
-                const webpBytes = await encode({
-                    data: rgba,
-                    width: image.bitmap.width,
-                    height: image.bitmap.height,
-                    colorSpace: "srgb",
-                } as any)
-                const outBytes = webpBytes instanceof ArrayBuffer ? new Uint8Array(webpBytes) : webpBytes
+                const outBytes = await encodeRgbaToWebp(rgba, image.bitmap.width, image.bitmap.height)
                 await fs.promises.writeFile(outputPath, outBytes)
             }
 
@@ -253,13 +186,18 @@ export default function Command() {
                                     <Action
                                         title="Remove Background"
                                         icon={Icon.Person}
-                                        onAction={() => runNpuCommand("remove-background", file)}
+                                        onAction={() => runImageNpuAction("remove-background", file)}
                                     />
                                     <Action
                                         title="Super Resolution"
                                         icon={Icon.MagnifyingGlass}
                                         onAction={() =>
-                                            push(<SuperResolutionForm file={file} runNpuCommand={runNpuCommand} />)
+                                            push(
+                                                <SuperResolutionForm
+                                                    file={file}
+                                                    runImageNpuAction={runImageNpuAction}
+                                                />,
+                                            )
                                         }
                                     />
                                     <Action
@@ -289,10 +227,7 @@ export default function Command() {
                                                 handleJimpProcess(() => {}, "_converted", { format: "bmp" })
                                             }
                                         />
-                                        <Action
-                                            title="To WebP"
-                                            onAction={() => handleConvertToWebP("_converted")}
-                                        />
+                                        <Action title="To WebP" onAction={() => handleConvertToWebP("_converted")} />
                                     </ActionPanel.Submenu>
 
                                     <Action
@@ -524,7 +459,15 @@ function OptimizeForm({ onProcess }: { onProcess: any }) {
     )
 }
 
-function SuperResolutionForm({ file, runNpuCommand }: { file: SelectedFile; runNpuCommand: any }) {
+type RunImageNpuAction = (command: string, file: SelectedFile, extraArgs?: string[]) => Promise<void>
+
+function SuperResolutionForm({
+    file,
+    runImageNpuAction,
+}: {
+    file: SelectedFile
+    runImageNpuAction: RunImageNpuAction
+}) {
     const { defaultScaleFactor } = getPreferenceValues<ImageEditorPreferences>()
     const { pop } = useNavigation()
     return (
@@ -534,7 +477,7 @@ function SuperResolutionForm({ file, runNpuCommand }: { file: SelectedFile; runN
                     <Action.SubmitForm
                         title="Upscale Image"
                         onSubmit={async (values: { factor: string }) => {
-                            await runNpuCommand("super-resolution", file, [values.factor])
+                            await runImageNpuAction("super-resolution", file, [values.factor])
                             pop()
                         }}
                     />

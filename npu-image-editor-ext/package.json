@@ -98,6 +98,8 @@
         "typescript": "^5.2.2"
     },
     "scripts": {
+        "prebuild": "node scripts/copy-wasm.mjs",
+        "predev": "node scripts/copy-wasm.mjs",
         "build": "ray build -e dist",
         "dev": "ray develop",
         "fix-lint": "ray lint --fix",

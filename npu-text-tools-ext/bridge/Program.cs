@@ -1,3 +1,11 @@
+// Sparse identity: NpuTextToolsBridge.Identity (see Package.appxmanifest).
+// Do NOT copy this exe across extensions — activation context follows the
+// manifest beside it, and identity names differ per bridge.
+//
+// Commands handled here: phi-rewrite <mode> <tempInputFile>
+//   modes: grammar | formal | concise | bullets | simplify | custom
+// One JSON line on stdout per invocation; diagnostics on stderr.
+
 using System.Text.Json;
 using Microsoft.Windows.AI;
 using Microsoft.Windows.AI.Text;

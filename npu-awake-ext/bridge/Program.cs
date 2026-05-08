@@ -1,3 +1,10 @@
+// Sparse identity: NpuAwakeBridge.Identity (see Package.appxmanifest).
+// Do NOT copy this exe across extensions — activation context follows the
+// manifest beside it, and identity names differ per bridge.
+//
+// Commands handled here: awake-intent <tempInputFile>
+// One JSON line on stdout per invocation; diagnostics on stderr.
+
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Windows.AI;

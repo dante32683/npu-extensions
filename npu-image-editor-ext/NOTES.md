@@ -14,7 +14,7 @@ Extension-specific detail for **`npu-image-editor-ext`**. Suite workflow: **`CON
 
 ## Features
 
-1. **Remove Background**: Uses the NPU-accelerated `ImageForegroundExtractor` (WinRT).
+1. **Remove Background**: Uses the NPU-accelerated `ImageObjectExtractor` (WinRT, `Microsoft.Windows.AI.Imaging`). Older Microsoft drafts call this `ImageForegroundExtractor`.
 2. **Explorer Integration**: Automatically detects selected images in active Explorer windows.
 3. **Clipboard Support**: Process images directly from the clipboard.
 

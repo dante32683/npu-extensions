@@ -8,9 +8,11 @@ publish/
 # Build outputs
 dist/
 assets/bin/
+assets/webp/
 *.exe
 *.dll
 *.pdb
+*.wasm
 *.json
 !package.json
 !package-lock.json

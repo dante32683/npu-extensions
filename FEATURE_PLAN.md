@@ -113,8 +113,10 @@ These files needed updating before the respective extensions could run in `npm r
 | 6 | Sticker Maker (basic) | `npu-image-editor-ext` | Medium-High |
 | 7 | Sticker Maker (manual focus) | `npu-image-editor-ext` | High — API TBD |
 | 8 | Search Notes | `npu-notes-ext` | Later |
+| 9 | NPU Dev Toolbox (Git Commit) | `npu-dev-toolbox-ext` (new) | Medium |
+| 10 | Semantic Note Linking | `npu-notes-ext` | Medium |
 
-> **Status (2026-05-07):** Items **#1 Super Resolution**, **#2 OCR**, **#3 Phi-Silica Text Tools**, and **#4 Smart Note Taker** are implemented. **#5 Awake** is currently being redesigned as **Smart Awake** to incorporate NPU-powered natural language schedule parsing. Next up after the redesign is **#6 Sticker Maker**. The PENDING `package.json` section below remains historical reference.
+> **Status (2026-05-07):** Items **#1 Super Resolution**, **#2 OCR**, **#3 Phi-Silica Text Tools**, and **#4 Smart Note Taker** are implemented. **#5 Awake** is currently being redesigned as **Smart Awake** to incorporate NPU-powered natural language schedule parsing. Next up after the redesign is **#6 Sticker Maker**. Items **#9** and **#10** are new additions to the roadmap. The PENDING `package.json` section below remains historical reference.
 
 ---
 
@@ -532,7 +534,7 @@ Converts an image into a 480×480 transparent WebP sticker. NPU removes the back
 5. Toast warning if no clear subject: "No clear subject detected — center crop used. Use 'Make Sticker (Manual Focus)' for better results."
 
 **Crop algorithm:**
-1. Run `ImageForegroundExtractor` → get alpha mask (reuse existing bridge logic)
+1. Run `ImageObjectExtractor` → get alpha mask (reuse existing bridge logic — see §6c lesson #1)
 2. Scan mask pixels to find bounding box of all non-zero alpha pixels
 3. Add 10% padding on all sides (clamped to image bounds)
 4. If bounding box covers >80% of image → fallback: use center crop, show warning toast
@@ -556,6 +558,335 @@ TS side re-encodes the PNG to WebP via Jimp and writes final `_sticker.webp`.
 - Same crop → resize → WebP pipeline
 
 **Status:** API approach TBD. Build 6a first, then investigate whether region-of-interest guidance is possible with current SDK. Document findings in a new section of `NPU_INFO.md`.
+
+**Technical Insights (Applied from v1 features):**
+- **Pixel Access:** Use `IMemoryBufferByteAccess` pattern from `Program.cs` for fast bounding-box scanning in the bridge. Avoid sending large masks back to TS.
+- **Format:** Ensure input is converted to `Bgra8` before calling `ImageObjectExtractor`.
+- **Limits:** Check if dimensions exceed 4000px; downscale if necessary for NPU stability.
+
+### 6c. Pre-implementation lessons (already debugged in shipped features — apply *before* writing `make-sticker`)
+
+> **Scope of this subsection:** When the Sticker Maker plan above was written, several issues hadn’t been encountered yet. They were since debugged while shipping Remove Background, Super Resolution, OCR, Smart Note Taker, and Smart Awake. The originals are in those features’ commit history / inline comments / NOTES.md; this is a single checklist so the next implementer doesn’t re-discover them.
+
+1. **Class name correction — `ImageObjectExtractor`, not `ImageForegroundExtractor`.**
+   - The shipped `RemoveBackground()` in `npu-image-editor-ext/bridge/Program.cs` calls `Microsoft.Windows.AI.Imaging.ImageObjectExtractor`. The plan above (and `docs/RUNBOOK.md`, `npu-image-editor-ext/NOTES.md`, `NPU_INFO.md`) still use the older name. The sticker bridge case **must** use `ImageObjectExtractor` + `GetSoftwareBitmapObjectMask(ImageObjectExtractorHint)`. Fix the stale references in the docs in the same PR.
+2. **Reuse `RemoveBackground()` pixel pipeline as the source — don’t reimplement.**
+   - The existing implementation already produces a Bgra8 `SoftwareBitmap` whose alpha channel **is** the mask (see `ApplyMaskAsAlpha`). Refactor it into `Task<SoftwareBitmap> ExtractForegroundAsync(SoftwareBitmap source)` and call it from both `remove-background` and `make-sticker`. DRY.
+3. **`IMemoryBufferByteAccess` access pattern is mandatory.**
+   - Direct C# casts to `IMemoryBufferByteAccess` fail under CsWinRT (`InvalidCastException` / `IInspectable`). The shipped pattern is `((IWinRTObject)bufRef).NativeObject.As(iid)` + manual vtable invocation of slot `[3]` for `GetBuffer`. Reuse `InvokeGetBuffer` rather than rewriting.
+4. **Bounding-box scan happens on the Gray8 mask, not on the composited Bgra8.**
+   - Saves one buffer lock and one alpha-extract pass. Walk `maskData[y*stride + x] >= ALPHA_THRESHOLD` (constant: `STICKER_MASK_ALPHA_THRESHOLD = 16`) — don’t hardcode `0` or `128`.
+5. **WebP encoding does *not* go through Jimp in this project.**
+   - The plan above says “Encode as WebP via Jimp.” Jimp 1.6.x’s WebP path uses `new URL("*.wasm", import.meta.url)`, which Raycast’s bundler breaks. The shipped path in `modify-image.tsx` uses `@jsquash/webp/encode` with a manually compiled `WebAssembly.Module` and `locateFile: filename => filename`. Extract the existing `ensureWebpEncodeInit()` helper into `src/utils/webp-encoder.ts` and call it from `make-sticker.tsx`. Treat the “use Jimp” bullet in §6a as superseded.
+6. **`assets/webp/*.wasm` is not in the repo (and not produced by `dotnet publish`).**
+   - The current `modify-image.tsx` would throw `WebP encoder wasm missing: …\assets\webp\webp_enc.wasm` on a clean clone. Sticker Maker must not block on this. Add a tiny build step (e.g., `npm run prebuild` that copies `node_modules/@jsquash/webp/codec/enc/webp_enc{,_simd}.wasm` → `assets/webp/`) and run it from `package.json`’s `dev` and `build` scripts. File a follow-up to fix `modify-image.tsx`’s clipboard→WebP path the same way.
+7. **Sparse-package registration is now self-managed per command.**
+   - Every NPU bridge call must go through `ensureBridgeRegisteredOnce({ identityName, binDir, manifestSourcePath })` (see `npu-image-editor-ext/src/utils/ensure-bridge-registered.ts`, mirrored in notes/awake). The original §6 plan predates this helper. `make-sticker.tsx` must call it before `execFileAsync`, with `BRIDGE_IDENTITY = "NpuBridge.Identity"` (image editor identity, **not** a new one).
+8. **Bridge spawn invariants (already canonized in `EXTENSION_REGISTRY.md` / `docs/RUNBOOK.md`).**
+   - `cwd: path.dirname(BRIDGE_PATH)`, `windowsHide: true`, `--self-contained true`. Every NPU command in the suite uses the same `runNpuCommand`-style helper. Sticker Maker should call **the same** helper (currently inline in `modify-image.tsx`); extract it to `src/utils/run-npu-command.ts` and use it from `make-sticker.tsx`, `super-resolution.tsx`, `remove-background.tsx`, and `extract-text.tsx`. DRY.
+9. **First-run model download is 30–60s — message must match the suite template.**
+   - Use the standardized animated toast: `title: "Running NPU Make Sticker..."`, `message: "First run may take a moment to prepare the NPU model."` (matches `super-resolution.tsx` and the Phi-Silica bridges). See **§ Suite UX conventions** below for the canonical strings.
+10. **Output suffix must avoid the existing namespace.**
+    - Already taken: `_no_bg.png` (Remove Background), `_2x.<ext>` / `_4x.<ext>` (Super Resolution), `_converted.<ext>` (Modify Image convert), `_optimized.<ext>`, `_flipped.<ext>`, `_rotated.<ext>`, `_padded.<ext>`, `_resized.<ext>`, `_scaled.<ext>`, `_no_exif.<ext>`. The plan’s `_sticker_raw.png` (intermediate) and `_sticker.webp` (final) are clear. Delete the intermediate in a `finally` block so failed runs don’t leave `_sticker_raw.png` on disk.
+11. **Big images blow up NPU memory before the documented 4000 px ceiling.**
+    - In practice ≥4000 × 4000 throws on Snapdragon X (matches the OCR `SoftwareBitmap` ceiling cited inline in `Program.cs`). Sticker Maker should pre-downscale to ≤2048 px on the long edge before calling `ImageObjectExtractor`. The user-visible output is 480×480 anyway; resampling once on input is cheaper and more reliable than rescuing failed inferences.
+12. **Centroid hint: keep the same `(width/2, height/2)` foreground point as Remove Background.**
+    - Don’t pass `null` for points — empirically the model produces tighter masks with a single centered foreground hint. This is what `RemoveBackground()` already does.
+13. **JSON contract template (matches the rest of the suite).**
+    - Bridge always returns one stdout line: `{ status: "success", outputPath, subjectDetected, subjectBoxRatio, message }` on success, `{ status: "error", message }` on failure. Stderr is human-readable diagnostics only (the TS layer logs it, never parses it). Match `npu-image-editor-ext/bridge/Program.cs` style exactly.
+
+> **Net effect on the §6 plan:** §6a is still correct in shape; the *steps* change to (a) refactor shared extractor + WebP encoder helpers first, (b) fix the `assets/webp/*.wasm` build step, (c) then add the `make-sticker` bridge case + `make-sticker.tsx`. §6b (Manual Focus) is unchanged.
+
+---
+
+## 9. NPU Dev Toolbox — Git Commit (auto-detect repo)
+
+**Extension:** `npu-dev-toolbox-ext` (new — to be scaffolded)
+**New files:** `package.json`, `bridge/Program.cs`, `bridge/Package.appxmanifest`, `src/commit-message.tsx`, `src/utils/foreground-context.ts`, `src/utils/git.ts`, `src/utils/run-bridge.ts`, `src/utils/ensure-bridge-registered.ts` (copy of the canonical helper).
+
+### What it does
+
+Generates a high-quality commit message for the repo the user is *currently working in*, fully on-device. The user runs one Raycast command; the extension figures out which folder they mean (Windows Terminal’s active shell, VS Code’s window, or the foreground Explorer location), runs `git diff`, and feeds it to Phi-Silica.
+
+### User flow (v1: `commit-message`)
+
+1. User runs **NPU Dev Toolbox: Commit Message** (no args required).
+2. Animated toast: `Detecting active workspace...`
+3. Resolution order (first hit wins; **always** wrapped in try/catch so a failure in one method falls through):
+   1. **Optional `path` argument** (Raycast LaunchProps argument). If provided and is a git repo, use it.
+   2. **Foreground process detection (TS + PowerShell P/Invoke).** Get `GetForegroundWindow()` → `GetWindowThreadProcessId()` → process name.
+      - If `WindowsTerminal.exe` / `wt.exe` → walk children via `Get-CimInstance Win32_Process -Filter "ParentProcessId=<pid>"` to a shell (`pwsh.exe`, `powershell.exe`, `cmd.exe`, `wsl.exe`, `bash.exe`). Read the shell’s **CWD** via the bridge (`cwd-of-pid <pid>` — see below).
+      - If `Code.exe` / `Cursor.exe` / `WindsurfNext.exe` (any Electron VS Code fork) → parse `MainWindowTitle` (format: `<file> - <folder> - <appname>`) and verify the folder against `%APPDATA%\Code\storage.json` (or `%APPDATA%\Cursor\storage.json`) `windowsState.lastActiveWindow.folder` / `openedPathsList.workspaces3`.
+      - If `explorer.exe` → reuse the existing `Shell.Application` `Windows()` enumerator (already in `npu-image-editor-ext/src/utils/powershell-utils.ts`) but read `LocationURL` instead of `SelectedItems()`.
+   3. **Last-resort fallback:** Raycast directory picker (`Form.FilePicker` with `canChooseDirectories: true`).
+4. Validate the resolved path is a git working tree (`git rev-parse --show-toplevel`). If not, surface the standard error toast (see § Suite UX conventions).
+5. Run `git status --porcelain=v1`, `git diff --staged`, `git diff`, `git log -n 5 --pretty=%s`, `git rev-parse --abbrev-ref HEAD` in the repo root.
+   - If `--staged` has content, prefer it. Else use unstaged. Else: success toast saying *“No changes to commit.”* (treated as success, not error.)
+6. Truncate diff if `>` `MAX_DIFF_BYTES` (constant: `100_000`). Truncation strategy: keep every file’s `diff --git` header + its first `MAX_HUNKS_PER_FILE` (constant: `4`) hunks; append `... (truncated N hunks)`.
+7. Call bridge `phi-commit` with a JSON payload (see contract below).
+8. Render result in a `Detail` view with the message in markdown, plus an action panel:
+   - **Copy to Clipboard** (primary, `cmd+enter`)
+   - **Copy & Run `git commit`** (secondary; runs `git commit -m "<subject>" -m "<body>"` in the resolved CWD)
+   - **Regenerate** (re-calls Phi with a slightly different temperature / instruction)
+   - **Open Repo in Explorer**
+
+### Bridge IPC contract
+
+Sparse identity: `NpuDevToolboxBridge.Identity`. Binary: `npu-dev-toolbox-ext/assets/bin/NpuBridge.exe`.
+
+```
+NpuBridge.exe cwd-of-pid <pid>
+  → { "status": "success", "cwd": "C:\\repo\\..." }
+  → { "status": "error", "message": "..." }
+
+NpuBridge.exe phi-commit <tempInputFile>
+  → { "status": "success", "subject": "...", "body": "..." }
+  → { "status": "error", "message": "..." }
+```
+
+`<tempInputFile>` contains JSON:
+
+```json
+{
+  "branch": "feat/sticker-maker",
+  "recentCommits": ["fix: ocr bgra8 conversion", "feat: super-resolution scale dropdown"],
+  "diffStaged": true,
+  "diff": "<truncated unified diff>",
+  "style": "conventional"
+}
+```
+
+`style` ∈ `"conventional" | "plain"`. `"conventional"` instructs Phi to use Conventional Commits (`feat:` / `fix:` / `docs:` / `refactor:` / `test:` / `chore:`).
+
+### Phi system prompt (commit message)
+
+```
+You are a senior engineer writing a Git commit message for the change below. 
+Output ONLY valid JSON in this EXACT shape: { "subject": "...", "body": "..." }.
+Rules:
+- subject: <= 72 chars, imperative mood, no trailing period.
+- If style is "conventional", subject MUST start with one of:
+    feat | fix | docs | refactor | test | chore | perf | build | ci | style
+  optionally followed by "(scope)", then ": ".
+- body: 1-3 short paragraphs OR a bullet list explaining WHY (not what — the diff already shows what).
+  Use plain Markdown. Wrap at ~100 chars. Empty string is allowed.
+- DO NOT invent files, APIs, or behavior not visible in the diff.
+- DO NOT include code fences, prose around the JSON, or "Here is the commit message:".
+
+Branch: {branch}
+Recent commits (for tone reference): {recentCommits}
+Diff (staged={diffStaged}):
+{diff}
+```
+
+> **Reuse the existing JSON-extraction pattern.** Both `npu-notes-ext` and `npu-awake-ext` already have a “first `{` to last `}`” fallback because Phi sometimes wraps JSON in fences. Copy that helper (`ExtractJsonObject`) into the new bridge — do not rewrite it.
+
+### `cwd-of-pid` implementation note (NtQueryInformationProcess + PEB read)
+
+- C# `Process.StartInfo.WorkingDirectory` is empty for already-running processes. The reliable Windows-native approach is `NtQueryInformationProcess(handle, ProcessBasicInformation, ...)` → read PEB → `RTL_USER_PROCESS_PARAMETERS` → `CurrentDirectory.DosPath` via `ReadProcessMemory`.
+- This requires `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, ...)`, which works for same-user shells without elevation. If `OpenProcess` fails, return `{ status: "error", message: "Cannot read working directory of PID <n>" }` and let TS fall back to the next detection method.
+- Wrap the entire P/Invoke in try/catch; never let it throw to the JSON layer. WoW64 PEBs need `NtWow64QueryInformationProcess64` on x64 Windows targeting a 32-bit process — for v1, return error rather than supporting that edge case.
+
+### Foreground-context detection (TypeScript shape)
+
+```
+src/utils/foreground-context.ts
+  export type DetectedContext = {
+    cwd: string
+    source: "argument" | "windows-terminal" | "vscode" | "cursor" | "explorer" | "picker"
+    pid?: number
+  }
+  export async function detectActiveWorkspace(arg?: string): Promise<DetectedContext>
+```
+
+- **Single source of truth** for which detection methods exist and in what order.
+- `detectActiveWorkspace` returns *the first hit* and short-circuits — never silently merges multiple sources.
+- Each detection method is its own private function, each wrapped in try/catch returning `null` on failure. No `throw` in this module — only `return null` so the orchestrator can keep falling through.
+
+### Stretch (after v1)
+
+- `code-comment` — paste a function, get JSDoc / XML doc back.
+- `regex-from-english` — “match a UK phone number” → pattern + a few example matches.
+- `pii-redact` — clipboard scan + redaction (mentioned in the brainstorm, but lives more naturally here than in text-tools).
+
+These each become a new bridge mode (`phi-comment`, `phi-regex`, `phi-redact`) and a new `.tsx` command, all reusing the same `run-bridge.ts` and `ensure-bridge-registered.ts` helpers.
+
+### What this extension intentionally does NOT do
+
+- **Does not run `git commit` automatically without user confirmation.** Even the “Copy & Run” action shows the proposed message and the resolved CWD before executing.
+- **Does not push.** Ever.
+- **Does not call out to the network.** All inference is on-device; if Phi-Silica is unavailable, surface the standard error toast and stop.
+
+---
+
+## 10. Semantic Note Linking
+
+**Extension:** `npu-notes-ext` (existing — extends the implemented `add-note` flow and re-introduces a real `search-notes` command)
+**New files:** `src/find-related.tsx`, `src/search-notes.tsx` (re-added — see § Cleanup follow-ups for why it’s currently absent), `src/utils/note-linker.ts`. Modifies: `bridge/Program.cs` (new `phi-related` argv + `phi-search-relevance`), `src/add-note.tsx` (post-save linking step), `src/utils/note-utils.ts` (frontmatter `related` field), `package.json` (re-add the `search-notes` command entry).
+
+### What it does
+
+When a note is saved, the extension uses Phi-Silica to find which existing notes are *semantically related* (not just keyword matches) and writes those links into both notes’ frontmatter. A new “Find Related Notes” command lets users surface related notes for any existing note.
+
+> **Why generation, not embeddings, for v1.** `Microsoft.Windows.AI.Text.LanguageModel` is the only on-device text API guaranteed available across the Copilot+ PC SKUs we target today. There is no public, stable text-embedding API in `Microsoft.Windows.AI` at the time of writing. v1 uses Phi-Silica as a relatedness classifier; v2 can swap in embeddings without changing the storage schema (see “Future: embeddings” below).
+
+### Storage schema change
+
+Add an optional `related:` field to existing note frontmatter:
+
+```markdown
+---
+date: 2026-05-07 03:14
+category: school
+title: Professor Office Hours
+raw: "my professor has office hours friday 5-6pm"
+related:
+  - school/2026-05-06_syllabus-overview
+  - tasks/2026-05-04_email-professor
+---
+
+Professor has office hours on **Friday, 5:00–6:00 PM**.
+```
+
+- `related` values are repo-relative paths (without `.md`), so renames inside a category don’t break links until the category itself moves.
+- Field is **optional**. Old notes without it are valid; the linker writes the field on first link.
+- `note-utils.ts`’s `parseNote` is extended to read `related: []` (multi-line YAML list parser; keep it simple — no full YAML dep).
+
+### Add Note: post-save linking step
+
+After the existing Phi-Silica format/classify call returns and the file is written:
+
+1. Animated toast updates: `Saved. Finding related notes...`
+2. Build the candidate set:
+   - Take the **20 most recent notes** across all categories (recency wins; same-category notes are ranked first within recency).
+   - For each: take title, category, and the first 200 chars of body. Skip the just-saved note.
+3. Call bridge `phi-related <tempInputFile>` with the new note + candidate list.
+4. Bridge returns `{ status: "success", related: ["<repo-relative-path>", ...] }` (zero or more).
+5. TS writes the `related:` field into the new note’s frontmatter, **and** into each linked note’s frontmatter (bidirectional). All writes are atomic (temp file + rename, same pattern as `keeper-utils.ts atomicWriteJson`).
+6. Final toast: `Saved to <category>/<file> (linked to N note(s))` — or `Saved to <category>/<file>` if N=0. **No** extra toast on link failure; just log to stderr and keep the save successful (linking is best-effort, the note save is not).
+
+### Bridge IPC contract (new `phi-related` argv)
+
+```
+NpuBridge.exe phi-related <tempInputFile>
+  → { "status": "success", "related": ["<path>", ...] }
+  → { "status": "error", "message": "..." }
+```
+
+`<tempInputFile>` contains JSON:
+
+```json
+{
+  "newNote": {
+    "path": "school/2026-05-07_professor-office-hours",
+    "title": "professor-office-hours",
+    "category": "school",
+    "preview": "Professor has office hours on Friday..."
+  },
+  "candidates": [
+    { "path": "school/2026-05-06_syllabus-overview", "title": "syllabus-overview", "category": "school", "preview": "..." },
+    ...
+  ],
+  "maxLinks": 5
+}
+```
+
+### Phi system prompt (relatedness)
+
+```
+You are a note-linking assistant. Given a new note and a list of candidate notes, 
+identify which candidates are semantically related to the new note (same topic, 
+project, person, course, or task — not just shared keywords).
+
+Output ONLY valid JSON in this EXACT shape: { "related": ["<path>", ...] }.
+Rules:
+- Each entry MUST be exactly one of the "path" strings from the candidates list. 
+  Do NOT invent paths.
+- Return at most {maxLinks} paths.
+- If nothing is meaningfully related, return { "related": [] }.
+- DO NOT include explanations, prose, or code fences. JSON only.
+```
+
+> Reuse `ExtractJsonObject` from the awake/notes bridges (first `{` … last `}`) before deserializing — Phi sometimes still emits prose around JSON despite the instruction. **Validate** every returned path against the candidate set; drop unknown paths silently.
+
+### New command: `find-related.tsx`
+
+- Lists all saved notes (reusing `getAllNotes`) in a `List`.
+- Selecting a note runs `phi-related` against the **other 20 most recent notes** and renders results in a `Detail` view with `Action.Open` on each related note.
+- Same UX template as `browse-notes.tsx` — same `List.Item` shape, same accessory format, same actions ordering.
+
+### Re-introduce `search-notes` (separate but adjacent)
+
+`src/search-notes.tsx` was deleted on 2026-05-08 and the `search-notes` command was removed from `package.json` because it was shipping a `WIP` empty-view to users (see § Cleanup follow-ups). Re-add both as part of this work using the **two-phase** plan already in §4 (Search Notes stretch goal): keyword filter → if `<3` results, Phi-Silica yes/no pass per non-matching note. Bridge gets a new argv `phi-search-relevance <tempInputFile>` taking `{ query, candidate }` and returning `{ relevant: true|false }`. The Semantic Linking and Search Notes work share enough plumbing (same bridge, same temp-file pattern, same JSON-extract helper) that they should land in the same PR.
+
+### Future: embeddings (out of scope for v1; design hook only)
+
+If/when a stable embedding API ships in `Microsoft.Windows.AI` (or via `Microsoft.Windows.AI.MachineLearning` ONNX-runtime path):
+
+- Add a new bridge mode `phi-embed <text>` returning `{ "vector": [...] }`.
+- Cache embeddings alongside the note as a sibling `<filename>.emb.json` (or in a single `embeddings.bin` blob).
+- Replace the candidate-set + classifier step with a kNN over cached vectors.
+- Frontmatter `related:` schema **does not change** — only the producer changes.
+
+---
+
+## Suite UX conventions (canonical reference for all extensions)
+
+> **Why this section exists:** Toast strings, error templates, and action labels were drifting between extensions during the v1 build-out. New features (Sticker Maker, Dev Toolbox, Semantic Linking) **must** match these conventions. Existing extensions that don’t match are tracked as cleanup follow-ups (see § Cleanup follow-ups).
+
+### Capitalization
+
+- **Toast titles:** Title Case (e.g., `Upscaling Complete`, `Note Saved`).
+- **Toast messages:** Sentence case ending in a period (e.g., `Upscaled 3 image(s).`).
+- **Action labels (buttons, menu items):** Title Case (e.g., `Copy to Clipboard`, `Open in Editor`).
+- **Form labels:** Title Case. Form descriptions: sentence case.
+- **Section headers in `ActionPanel.Section title`:** Title Case (e.g., `NPU Actions (AI)`, `Standard Actions (CPU)`).
+
+### Toast templates
+
+| State | `Toast.Style` | Title | Message |
+|-------|---------------|-------|---------|
+| Animated (working) | `Animated` | `Running NPU <Friendly Name>...` *(NPU)* / `Formatting with Phi-Silica...` *(Phi)* / `Detecting Active Workspace...` *(toolbox)* | `First run may take a moment to prepare the NPU model.` (NPU only; Phi/toolbox: short context-specific message ending in `...`) |
+| Success | `Success` | `<Friendly Name> Complete` | `<Plain past-tense summary>.` (e.g., `Upscaled 3 image(s).`, `Saved to school/2026-05-07_office-hours.md.`) |
+| Failure | `Failure` | `<Friendly Name> Failed` | `<One-sentence reason>. <One short recovery hint>.` (e.g., `Bridge not found. Run dotnet publish in npu-image-editor-ext/bridge.`) |
+
+- **Ellipsis form is exactly three dots** (`...`), never `…`. Animated toasts always end in `...`. Success/failure messages never do.
+- **Never** mix `Processing...` and `Please wait` in the same flow. Always prefer the `Running NPU <Friendly Name>...` form for NPU calls.
+- **Never** emit emoji in toasts. (Plain templates only — they render badly in the Raycast toast UI on Windows.)
+
+### Action panel ordering (top-to-bottom in every command)
+
+1. **Primary destructive-or-output action** (`Copy to Clipboard`, `Save Note`, `Upscale Images`, `Make Sticker`).
+2. **Try Another / Regenerate** (where applicable).
+3. **Navigation** (`Open in Editor`, `Open Folder`, `Open Repo in Explorer`).
+4. **Selection management** (`Refresh Selection`, `Paste from Clipboard`, `Remove from Selection`).
+
+### Error handling rules (apply to every extension)
+
+- All bridge spawns, file I/O, PowerShell calls, and `git` calls go through one helper per extension (`run-bridge.ts`, `git.ts`, etc.) and that helper **always returns** `{ ok: true, value } | { ok: false, error }` — it does not throw to the UI layer.
+- The TS UI layer translates `{ ok: false, error }` into a `Toast.Style.Failure` toast using the template above. **No `throw` reaches the React render path.**
+- Bridge `Program.cs` always emits exactly one JSON line on stdout, regardless of error. Stack traces and developer diagnostics go to stderr and are logged with `console.error("[<BridgeName>]", stderr)` in TS — never parsed.
+- Input validation lives at the boundary (form `onSubmit`, argv parsing in `Program.cs`) and produces a `Failure` toast / `{ status: "error", ... }` JSON respectively. No deeper helper revalidates.
+
+### Code-cleanliness rules (apply when writing or touching any file)
+
+- **Naming:** TypeScript = `camelCase` for vars/functions, `PascalCase` for components/types. C# = `PascalCase` for public, `_camelCase` for private fields, `camelCase` for locals. No abbreviations except domain ones (`npu`, `ocr`, `cwd`, `pid`, `pii`).
+- **Imports:** stdlib (`fs`, `path`, `os`, `child_process`, `util`) → third-party (`@raycast/api`, `jimp`, `@jsquash/*`) → internal (`./utils/*`, `./shared/*`). Sorted alphabetically inside each group. No duplicates. No unused imports.
+- **Magic values:** every literal that appears more than once, or that has domain meaning (`2048`, `100_000`, `0x80073CFB`, `"NpuBridge.Identity"`, file suffix strings) becomes a named `const` at the top of the file or in `src/constants.ts`.
+- **DRY:** the bridge spawn helper, the WebP encoder init, the JSON-extract helper, the foreground-context detector, and the frontmatter parser each live in **one** place and are imported. Duplicated 2+ times = extract.
+- **Dead code:** no commented-out blocks (use git history). No `// TODO` without a `FEATURE_PLAN.md` link. No stubs that show `WIP` to users — gate them behind a Raycast preference if they must ship before completion.
+
+### Cleanup follow-ups
+
+> **Status legend:** ✅ done · 🔲 open. When you mark something done, add the date and a one-line "what changed" note; do **not** delete completed entries (history matters).
+
+- ✅ **WebP encoder / wasm asset wiring** *(done 2026-05-08)*. Inline `ensureWebpEncodeInit` moved to `npu-image-editor-ext/src/utils/webp-encoder.ts` (now exposes `encodeRgbaToWebp`). Missing wasms now copied at build time by `scripts/copy-wasm.mjs`, wired as `prebuild` and `predev` in `package.json`. `assets/webp/` and `*.wasm` added to root `.gitignore`.
+- ✅ **`runNpuCommand` extracted** *(done 2026-05-08)*. Moved to `npu-image-editor-ext/src/utils/run-npu-command.ts` (returns `{ ok, result } | { ok, error }`, never throws — matches the "Error handling rules" in § Suite UX conventions). `modify-image.tsx`, `super-resolution.tsx`, and `extract-text.tsx` all use it. `make-sticker.tsx` (when written) should use the same helper.
+- ✅ **`ImageForegroundExtractor` references corrected** *(done 2026-05-08)*. `docs/RUNBOOK.md`, `npu-image-editor-ext/NOTES.md`, `NPU_INFO.md`, and the active forward-looking parts of `FEATURE_PLAN.md §6` now say `ImageObjectExtractor` with a parenthetical noting the older draft name. Historical struck-through sections were left untouched per the planning-database rule at the top of this file.
+- ✅ **`search-notes` command hidden** *(done 2026-05-08)*. Removed from `npu-notes-ext/package.json` and the stub `src/search-notes.tsx` deleted to satisfy the "no `WIP` to users" rule. Re-added as part of §10 (see "Re-introduce `search-notes`" subsection).
+- ✅ **`NpuBridge.exe` name collision header comments added** *(done 2026-05-08)*. Each `bridge/Program.cs` now opens with a sparse-identity banner naming the matching `Package.appxmanifest` Identity Name and warning not to copy the exe across extensions.
+- 🔲 **`ensure-bridge-registered.ts`** is byte-identical across `npu-image-editor-ext`, `npu-notes-ext`, and `npu-awake-ext`. Fine for now (no shared package between extensions per `docs/RUNBOOK.md`), but new extensions (`npu-dev-toolbox-ext`) must copy the same file verbatim, not re-derive it.
+- 🔲 **Toast string drift across existing extensions.** Some commands still use phrasing like `"Bridge Not Found"` or `"NPU Processing Failed"` that don’t match the canonical `<Friendly Name> Failed` template in § Suite UX conventions. Audit + normalize in a follow-up pass — touching this required when implementing §6 / §9 / §10 anyway.
 
 ---
 

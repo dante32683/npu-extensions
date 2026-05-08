@@ -18,12 +18,6 @@
             "title": "Browse Notes",
             "description": "List and filter saved notes by category.",
             "mode": "view"
-        },
-        {
-            "name": "search-notes",
-            "title": "Search Notes",
-            "description": "Search notes by keyword or meaning.",
-            "mode": "view"
         }
     ],
     "preferences": [

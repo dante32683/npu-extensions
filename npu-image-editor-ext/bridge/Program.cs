@@ -1,3 +1,10 @@
+// Sparse identity: NpuBridge.Identity (see Package.appxmanifest).
+// Do NOT copy this exe across extensions — activation context follows the
+// manifest beside it, and identity names differ per bridge.
+//
+// Commands handled here: remove-background, super-resolution, ocr, make-sticker (TBD).
+// One JSON line on stdout per invocation; diagnostics on stderr.
+
 using System;
 using System.IO;
 using System.Runtime.InteropServices;

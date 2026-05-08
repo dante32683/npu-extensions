@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @raycast/prefer-title-case */
+/* eslint-disable @raycast/prefer-title-case */
 import {
     Action,
     ActionPanel,
@@ -12,18 +12,12 @@ import {
     getPreferenceValues,
 } from "@raycast/api"
 import { useCallback, useEffect, useState } from "react"
-import { getSelectedExplorerFiles, getClipboardImage, SelectedFile } from "./utils/powershell-utils"
 import { execFile } from "child_process"
-import { promisify } from "util"
 import path from "path"
 import fs from "fs"
-import { ensureBridgeRegisteredOnce } from "./utils/ensure-bridge-registered"
+import { getSelectedExplorerFiles, getClipboardImage, SelectedFile } from "./utils/powershell-utils"
+import { runNpuCommand } from "./utils/run-npu-command"
 
-const execFileAsync = promisify(execFile)
-const BRIDGE_PATH = path.join(environment.assetsPath, "bin", "NpuBridge.exe")
-const BRIDGE_BIN_DIR = path.join(environment.assetsPath, "bin")
-const BRIDGE_MANIFEST_SOURCE = path.join(environment.assetsPath, "..", "bridge", "Package.appxmanifest")
-const BRIDGE_IDENTITY = "NpuBridge.Identity"
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".gif", ".webp"]
 
 type OcrResult = {
@@ -66,76 +60,58 @@ export function ExtractTextForm() {
             title: `Extracting text from ${selectedFiles.length} image(s)...`,
         })
 
-        if (!fs.existsSync(BRIDGE_PATH)) {
+        const results: OcrResult[] = []
+        let firstError: string | null = null
+
+        for (const file of selectedFiles) {
+            const outcome = await runNpuCommand("ocr", [file.path])
+            if (outcome.ok) {
+                results.push({ file: file.name, text: String(outcome.result.text ?? "") })
+            } else {
+                console.error(`[NpuBridge OCR error for ${file.name}]`, outcome.error)
+                if (firstError === null) firstError = outcome.error
+            }
+        }
+
+        if (results.length === 0) {
             toast.style = Toast.Style.Failure
-            toast.title = "Bridge Not Found"
-            toast.message = `NpuBridge.exe missing.`
+            toast.title = "OCR Failed"
+            toast.message = firstError ?? "No text could be extracted."
             return
         }
 
-        const results: OcrResult[] = []
+        const formattedText = results
+            .map(res => `=== ${res.file} ===\n${res.text}`)
+            .join("\n\n")
+            .trim()
 
-        try {
-            await ensureBridgeRegisteredOnce({
-                identityName: BRIDGE_IDENTITY,
-                binDir: BRIDGE_BIN_DIR,
-                manifestSourcePath: BRIDGE_MANIFEST_SOURCE,
-            })
+        if (outputMode === "file") {
+            const outputDir = selectedFiles[0].path.startsWith(environment.assetsPath)
+                ? process.env.USERPROFILE + "\\Desktop"
+                : path.dirname(selectedFiles[0].path)
 
-            for (const file of selectedFiles) {
-                const { stdout, stderr } = await execFileAsync(BRIDGE_PATH, ["ocr", file.path], {
-                    cwd: path.dirname(BRIDGE_PATH),
-                    windowsHide: true,
-                })
-
-                if (stderr) console.error("[NpuBridge OCR stderr]", stderr)
-
-                const result = JSON.parse(stdout)
-                if (result.status === "success") {
-                    results.push({ file: file.name, text: result.text })
-                } else {
-                    console.error(`[NpuBridge OCR error for ${file.name}]`, result.message)
-                }
-            }
-
-            if (results.length === 0) {
+            const outputPath = path.join(outputDir!, "ocr_results.txt")
+            try {
+                fs.writeFileSync(outputPath, formattedText, "utf-8")
+            } catch (error: unknown) {
                 toast.style = Toast.Style.Failure
                 toast.title = "OCR Failed"
-                toast.message = "No text could be extracted."
+                toast.message = error instanceof Error ? error.message : String(error)
                 return
             }
 
-            let formattedText = ""
-            for (const res of results) {
-                formattedText += `=== ${res.file} ===\n${res.text}\n\n`
+            toast.style = Toast.Style.Success
+            toast.title = "Text Extracted"
+            toast.message = `Saved to ocr_results.txt`
+
+            if (autoOpen) {
+                execFile("powershell.exe", ["-NoProfile", "-Command", `Invoke-Item '${outputPath}'`])
             }
-            formattedText = formattedText.trim()
-
-            if (outputMode === "file") {
-                const outputDir = selectedFiles[0].path.startsWith(environment.assetsPath)
-                    ? process.env.USERPROFILE + "\\Desktop"
-                    : path.dirname(selectedFiles[0].path)
-
-                const outputPath = path.join(outputDir!, "ocr_results.txt")
-                fs.writeFileSync(outputPath, formattedText, "utf-8")
-
-                toast.style = Toast.Style.Success
-                toast.title = "Text Extracted"
-                toast.message = `Saved to ocr_results.txt`
-
-                if (autoOpen) {
-                    execFile("powershell.exe", ["-NoProfile", "-Command", `Invoke-Item '${outputPath}'`])
-                }
-                pop() // close the form
-            } else {
-                toast.style = Toast.Style.Success
-                toast.title = "Text Extracted"
-                setExtractedText(formattedText)
-            }
-        } catch (error: any) {
-            toast.style = Toast.Style.Failure
-            toast.title = "OCR Failed"
-            toast.message = String(error)
+            pop()
+        } else {
+            toast.style = Toast.Style.Success
+            toast.title = "Text Extracted"
+            setExtractedText(formattedText)
         }
     }
 
