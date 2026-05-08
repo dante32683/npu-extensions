@@ -1,0 +1,4 @@
+# Paths excluded from Claude Code automatic context where supported.
+# This meta guide points at CONTRIBUTING/RUNBOOK; no need to load it on every task.
+
+docs/HOW_TO_USE_THE_DOC_SYSTEM.md

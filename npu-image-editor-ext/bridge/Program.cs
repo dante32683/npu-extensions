@@ -6,6 +6,7 @@ using System.Text.Json;
 using Microsoft.Windows.AI;
 using Microsoft.Windows.AI.Imaging;
 using Windows.Graphics.Imaging;
+using Windows.Media.Ocr;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using WinRT;
@@ -43,7 +44,7 @@ namespace NpuBridge
                         await SuperResolution(inputPath, args[2]);
                         break;
                     case "ocr":
-                        WriteNotImplemented("ocr", "Usage: NpuBridge.exe ocr <inputPath>");
+                        await ExtractText(inputPath);
                         break;
                     case "make-sticker":
                         WriteNotImplemented("make-sticker", "Usage: NpuBridge.exe make-sticker <inputPath>");
@@ -242,6 +243,46 @@ namespace NpuBridge
                 status = "success",
                 outputPath,
                 message = $"Upscaled {scaleFactor}x successfully."
+            }));
+        }
+
+        static async Task ExtractText(string inputPath)
+        {
+            if (!File.Exists(inputPath))
+                throw new FileNotFoundException("Input image not found.", inputPath);
+
+            string fullInputPath = Path.GetFullPath(inputPath);
+            StorageFile inputFile = await StorageFile.GetFileFromPathAsync(fullInputPath);
+
+            SoftwareBitmap source;
+            using (var stream = await inputFile.OpenAsync(FileAccessMode.Read))
+            {
+                var decoder = await BitmapDecoder.CreateAsync(stream);
+                source = await decoder.GetSoftwareBitmapAsync();
+            }
+
+            // OcrEngine supports Bgra8 (SoftwareBitmap max dimensions: 4000x4000)
+            if (source.BitmapPixelFormat != BitmapPixelFormat.Bgra8)
+            {
+                var newSource = SoftwareBitmap.Convert(source, BitmapPixelFormat.Bgra8);
+                source.Dispose();
+                source = newSource;
+            }
+
+            OcrEngine engine = OcrEngine.TryCreateFromUserProfileLanguages();
+            if (engine == null)
+            {
+                source.Dispose();
+                throw new Exception("Failed to initialize OcrEngine with user profile languages.");
+            }
+
+            var result = await engine.RecognizeAsync(source);
+            source.Dispose();
+
+            Console.WriteLine(JsonSerializer.Serialize(new
+            {
+                status = "success",
+                text = result.Text
             }));
         }
     }

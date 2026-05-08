@@ -1,0 +1,4 @@
+# Cursor: excludes paths from indexing + Agent / @-mention access (see Cursor docs).
+# https://cursor.com/docs/context/ignore-files
+
+docs/HOW_TO_USE_THE_DOC_SYSTEM.md

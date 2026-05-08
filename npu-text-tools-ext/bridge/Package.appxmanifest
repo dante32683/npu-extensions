@@ -6,10 +6,11 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap uap10 rescap">
 
+  <!-- Must match app.manifest packageName and publisher exactly -->
   <Identity Name="NpuTextToolsBridge.Identity" Publisher="CN=Unsigned" Version="1.0.0.0" ProcessorArchitecture="x64" />
 
   <Properties>
-    <DisplayName>NPU Text Tools Bridge Identity</DisplayName>
+    <DisplayName>NpuTextToolsBridge Identity</DisplayName>
     <PublisherDisplayName>Unsigned</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
     <uap10:AllowExternalContent>true</uap10:AllowExternalContent>
@@ -26,9 +27,10 @@
 
   <Applications>
     <Application Id="App" Executable="NpuBridge.exe" uap10:TrustLevel="mediumIL" uap10:RuntimeBehavior="win32App">
-      <uap:VisualElements DisplayName="NPU Text Tools Bridge" Description="Phi-Silica bridge for Raycast"
+      <uap:VisualElements DisplayName="NpuTextToolsBridge" Description="Phi-Silica Text Tools Bridge for Raycast"
                           BackgroundColor="transparent" Square150x150Logo="Assets\Logo.png"
-                          Square44x44Logo="Assets\SmallLogo.png" />
+                          Square44x44Logo="Assets\SmallLogo.png">
+      </uap:VisualElements>
     </Application>
   </Applications>
 </Package>

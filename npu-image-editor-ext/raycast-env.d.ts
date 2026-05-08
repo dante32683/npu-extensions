@@ -22,7 +22,10 @@ declare namespace Preferences {
   /** Preferences accessible in the `make-sticker` command */
   export type MakeSticker = ExtensionPreferences & {}
   /** Preferences accessible in the `extract-text` command */
-  export type ExtractText = ExtensionPreferences & {}
+  export type ExtractText = ExtensionPreferences & {
+  /** Auto Open File - Automatically open the .txt file in the default editor after extraction. */
+  "autoOpenTxt": boolean
+}
 }
 
 declare namespace Arguments {

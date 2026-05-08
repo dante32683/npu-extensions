@@ -8,6 +8,7 @@ import fs from "fs"
 import os from "os"
 import { Jimp } from "jimp"
 import { getSelectedExplorerFiles, getClipboardImage, SelectedFile } from "./utils/powershell-utils"
+import { ExtractTextForm } from "./extract-text"
 
 const execFileAsync = promisify(execFile)
 
@@ -165,6 +166,11 @@ export default function Command() {
                                         onAction={() =>
                                             push(<SuperResolutionForm file={file} runNpuCommand={runNpuCommand} />)
                                         }
+                                    />
+                                    <Action
+                                        title="Extract Text (OCR)"
+                                        icon={Icon.Text}
+                                        onAction={() => push(<ExtractTextForm />)}
                                     />
                                 </ActionPanel.Section>
 

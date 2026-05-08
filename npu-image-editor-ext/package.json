@@ -35,7 +35,18 @@
             "name": "extract-text",
             "title": "Extract Text (OCR)",
             "description": "Extract text from selected Explorer images.",
-            "mode": "view"
+            "mode": "view",
+            "preferences": [
+                {
+                    "name": "autoOpenTxt",
+                    "description": "Automatically open the .txt file in the default editor after extraction.",
+                    "type": "checkbox",
+                    "required": false,
+                    "default": true,
+                    "title": "Auto Open File",
+                    "label": "Open .txt file after extraction"
+                }
+            ]
         }
     ],
     "dependencies": {

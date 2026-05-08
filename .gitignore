@@ -1,8 +1,9 @@
 # Dependencies
 node_modules/
-bin/
-obj/
+[Bb]in/
+[Oo]bj/
 publish/
+.vs/
 
 # Build outputs
 dist/
@@ -20,15 +21,14 @@ assets/bin/
 *.snupkg
 *.user
 *.suo
+*.userosscache
+*.sln.doccache
 TestResults/
 
-# Planning and Instruction Documents (Keep local only)
-CLAUDE.md
-GEMINI.md
+# Planning / instruction docs: optional local-only
+# (Tracked for collaboration: AGENTS.md, CLAUDE.md, GEMINI.md, FEATURE_PLAN.md — hub + stubs.)
 COPILOT_CONTEXT.md
 NPU_INFO.md
-FEATURE_PLAN.md
-AGENTS.md
 *.skill
 
 # IDEs
@@ -36,6 +36,11 @@ AGENTS.md
 .idea/
 *.swp
 *.swo
+*.user
+*.suo
+*.vshost.exe
+*.vshost.exe.manifest
+*.vshost.exe.config
 
 # OS files
 Thumbs.db

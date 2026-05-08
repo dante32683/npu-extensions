@@ -1,0 +1,4 @@
+# Paths excluded from Gemini automatic context (e.g. indexing / bulk file tools).
+# Keep meta / redundant instruction docs here so Gemini reads stubs + real sources instead.
+
+docs/HOW_TO_USE_THE_DOC_SYSTEM.md

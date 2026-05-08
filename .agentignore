@@ -1,0 +1,4 @@
+# Non-standard / optional. Cursor uses .cursorignore instead; Codex has no official .agentignore.
+# Keep in sync with .cursorignore for this repo’s one meta doc if other tools learn this name.
+
+docs/HOW_TO_USE_THE_DOC_SYSTEM.md
