@@ -15,7 +15,7 @@ This is a **suite of standalone** Raycast for Windows extensions. Each folder un
 **Non-exhaustive examples** (see registry for truth):
 
 - **NPU / WinRT imaging** — e.g. foreground extraction, scaling, OCR-related paths.
-- **Phi-Silica / text** — e.g. `Microsoft.Windows.AI.Text.LanguageModel`.
+- **Phi-Silica / text** — e.g. `Microsoft.Windows.AI.Text.LanguageModel` (used in `npu-text-tools-ext` and `npu-notes-ext`).
 - **Awake / Win32** — separate from sparse `NpuBridge` activation.
 
 ## npm commands (any extension)
