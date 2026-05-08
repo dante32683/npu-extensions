@@ -1,0 +1,123 @@
+{
+    "$schema": "https://www.raycast.com/schemas/extension.json",
+    "name": "npu-dev-toolbox",
+    "title": "NPU Dev Toolbox",
+    "description": "On-device dev helpers: open a workspace in your terminal/IDE/Explorer, and generate Git commit messages with Phi-Silica.",
+    "icon": "extension-icon.png",
+    "author": "user",
+    "license": "MIT",
+    "commands": [
+        {
+            "name": "open-workspace",
+            "title": "Open Workspace",
+            "description": "Pick or auto-detect a folder, then open it in Explorer, a terminal, or your IDE.",
+            "mode": "view"
+        },
+        {
+            "name": "commit-message",
+            "title": "Commit Message",
+            "description": "Generate a Git commit message for the active repo using Phi-Silica.",
+            "mode": "view",
+            "arguments": [
+                {
+                    "name": "path",
+                    "placeholder": "optional repo path",
+                    "type": "text",
+                    "required": false
+                }
+            ]
+        }
+    ],
+    "preferences": [
+        {
+            "name": "terminalChoice",
+            "title": "Terminal",
+            "description": "Which terminal to launch when 'Open in Terminal' is run.",
+            "type": "dropdown",
+            "required": false,
+            "default": "wt",
+            "data": [
+                { "title": "Windows Terminal (wt)", "value": "wt" },
+                { "title": "PowerShell 7 (pwsh)", "value": "pwsh" },
+                { "title": "Windows PowerShell (powershell)", "value": "powershell" },
+                { "title": "Command Prompt (cmd)", "value": "cmd" },
+                { "title": "Custom Path", "value": "custom" }
+            ]
+        },
+        {
+            "name": "terminalNewTab",
+            "title": "Windows Terminal",
+            "description": "When enabled, Windows Terminal opens a new tab in an existing window instead of a new window.",
+            "type": "checkbox",
+            "required": false,
+            "default": false,
+            "label": "Open as a new tab in an existing Windows Terminal window"
+        },
+        {
+            "name": "terminalCustomPath",
+            "title": "Terminal Custom Path",
+            "description": "Full path to a .exe or .lnk to use when 'Terminal' is set to 'Custom Path'.",
+            "type": "textfield",
+            "required": false,
+            "default": ""
+        },
+        {
+            "name": "ideChoice",
+            "title": "IDE",
+            "description": "Which IDE/editor to launch when 'Open in IDE' is run.",
+            "type": "dropdown",
+            "required": false,
+            "default": "cursor",
+            "data": [
+                { "title": "Cursor", "value": "cursor" },
+                { "title": "Visual Studio Code", "value": "code" },
+                { "title": "Windsurf", "value": "windsurf" },
+                { "title": "JetBrains IntelliJ IDEA", "value": "idea" },
+                { "title": "JetBrains PyCharm", "value": "pycharm" },
+                { "title": "JetBrains WebStorm", "value": "webstorm" },
+                { "title": "JetBrains Rider", "value": "rider" },
+                { "title": "Sublime Text", "value": "subl" },
+                { "title": "Notepad++", "value": "notepad++" },
+                { "title": "Custom Path", "value": "custom" }
+            ]
+        },
+        {
+            "name": "ideCustomPath",
+            "title": "IDE Custom Path",
+            "description": "Full path to a .exe or .lnk to use when 'IDE' is set to 'Custom Path'.",
+            "type": "textfield",
+            "required": false,
+            "default": ""
+        },
+        {
+            "name": "commitStyle",
+            "title": "Commit Style",
+            "description": "Default commit message style for the Commit Message command.",
+            "type": "dropdown",
+            "required": false,
+            "default": "conventional",
+            "data": [
+                { "title": "Conventional Commits", "value": "conventional" },
+                { "title": "Plain", "value": "plain" }
+            ]
+        }
+    ],
+    "dependencies": {
+        "@raycast/api": "^1.71.0"
+    },
+    "devDependencies": {
+        "@raycast/eslint-config": "^1.0.8",
+        "@types/node": "20.8.10",
+        "@types/react": "19.0.10",
+        "eslint": "^8.51.0",
+        "prettier": "^3.0.3",
+        "typescript": "^5.2.2"
+    },
+    "scripts": {
+        "build": "ray build -e dist",
+        "dev": "ray develop",
+        "fix-lint": "ray lint --fix",
+        "lint": "ray lint",
+        "publish": "npx @raycast/api@latest publish"
+    }
+}
