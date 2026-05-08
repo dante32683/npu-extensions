@@ -109,12 +109,12 @@ These files needed updating before the respective extensions could run in `npm r
 | 2 | OCR / Extract Text | `npu-image-editor-ext` | Low |
 | 3 | Phi-Silica Text Tools | `npu-text-tools-ext` (new) | Medium |
 | 4 | Smart Note Taker | `npu-notes-ext` (new) | Medium |
-| 5 | Awake | `npu-awake-ext` (new) | Medium |
+| 5 | Smart Awake (Natural Language) | `npu-awake-ext` | Medium-High |
 | 6 | Sticker Maker (basic) | `npu-image-editor-ext` | Medium-High |
 | 7 | Sticker Maker (manual focus) | `npu-image-editor-ext` | High — API TBD |
 | 8 | Search Notes | `npu-notes-ext` | Later |
 
-> **Status (2026-05-07):** Items **#1 Super Resolution**, **#2 OCR**, **#3 Phi-Silica Text Tools**, and **#4 Smart Note Taker** are implemented. Next up per **Build Order** is **#5 Awake**. The PENDING `package.json` section below remains historical reference.
+> **Status (2026-05-07):** Items **#1 Super Resolution**, **#2 OCR**, **#3 Phi-Silica Text Tools**, and **#4 Smart Note Taker** are implemented. **#5 Awake** is currently being redesigned as **Smart Awake** to incorporate NPU-powered natural language schedule parsing. Next up after the redesign is **#6 Sticker Maker**. The PENDING `package.json` section below remains historical reference.
 
 ---
 
@@ -406,59 +406,112 @@ STRETCH (later):
 
 ---
 
-## 5. Awake
-**Extension:** `npu-awake-ext` (new, scaffolded at `npu-awake-ext/`)
-**New files:** one `.tsx` per command in `src/`, `keeper/AwakeKeeper.csproj` + `keeper/Program.cs`
+## 5. Smart Awake (NPU-Powered)
+> **Status: Redesigning (2026-05-07).**
+>
+> **Goal:** A reliable “natural language Awake” command **without sacrificing** the existing fast/manual keep-awake controls.
+>
+> **Key principle (audit-driven):** Phi-Silica is used for **intent extraction**, not math. All time math, date resolution, and schedule evaluation are deterministic in code.
 
-### What it does
-Prevents Windows from sleeping. Keyboard-first, no mouse needed. Uses `SetThreadExecutionState` Win32 API via a persistent helper process.
+### Product surface (best of both worlds)
 
-### Commands
+Keep the existing explicit commands (fast, deterministic):
+- `awake` (toggle indefinite)
+- `awake-for` (minutes)
+- `awake-until` (HH:mm today)
+- `screen-off-mode` (system awake, display allowed to sleep)
+- `let-sleep`
+- `awake-status`
 
-| Command | Mode | Behavior |
-|---------|------|----------|
-| Awake | no-view | Toggle indefinite keep-awake on/off |
-| Awake For... | view | Arg: minutes. Stays awake for N minutes, then auto-releases |
-| Awake Until | view | Arg: time string (e.g. `17:30`). Stays awake until clock reaches that time |
-| Let Sleep | no-view | Immediately cancel any active session |
-| Awake Status | view | List view showing current mode + time remaining / target time |
-| Screen-Off Mode | no-view | System awake, display allowed to sleep (good for downloads/renders) |
+Add one natural-language command (the “macOS ai.yaml” pattern, Windows edition):
+- `awake-natural` (single entrypoint; routes to the same underlying “tools” as above)
 
-### AwakeKeeper.exe (C# helper)
-Lives at `npu-awake-ext/keeper/`. No NPU dependency, no App SDK. Minimal exe.
+### Reliability model: tool-first routing + deterministic execution
 
-```
-AwakeKeeper.exe <mode> [durationSeconds|targetEpochSeconds]
-```
+Natural language should behave like a constrained tool-calling agent:
+- **Always** check current state first (active session? any schedules running?) before acting.
+- Use Phi only to classify what the user wants into a small set of supported actions.
+- Execute via stable, testable “tools” (keeper modes + schedule store), not via free-form LLM output.
 
-Modes: `indefinite`, `timed`, `until`, `screen-off`
+This mirrors the macOS `ai.yaml` approach:
+- a policy (“tool selection guide”) for routing
+- plus eval-style test cases that assert correct routing/arguments
+- plus a stable executor (`AwakeKeeper.exe`) that actually prevents sleep
 
-The keeper loops every 30 seconds calling `SetThreadExecutionState`:
-- `ES_CONTINUOUS | ES_SYSTEM_REQUIRED` — system awake
-- `ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED` — system + display awake
-- `ES_CONTINUOUS` alone (no other flags) — release the lock
+### Architecture (dual-binary + persistent schedules)
 
-On expiry (timed/until modes), keeper calls the release form and exits.
+**1) Win32 Keeper (`keeper/`) — stable executor + daemon**
+- `AwakeKeeper.exe` remains the long-running low-overhead process that calls `SetThreadExecutionState`.
+- Add a **daemon/scheduler mode** that:
+  - reads persistent schedules from a `schedules.json` file at startup
+  - monitors it for changes (e.g. `FileSystemWatcher`) and reloads without restart
+  - enforces “active windows” by evaluating schedules deterministically against system time
 
-### State management in TypeScript
-- Keeper PID stored in Raycast `LocalStorage` as `"keeperPid"`
-- On "Let Sleep" or toggle-off: read PID, call `process.kill(pid)` in TS
-- On "Awake Status": check if PID process is still running, read stored mode/expiry
+**2) NPU Bridge (`bridge/`) — Phi intent extractor**
+- New sparse-package bridge (`npu-awake-ext/bridge/`) using `Microsoft.Windows.AI.Text.LanguageModel`.
+- It returns **structured intent only** (no Unix timestamps, no derived durations).
+- It must implement **robust JSON extraction** (Phi may wrap JSON in prose or code fences).
 
-### Awake For... UX
-- If launched with argument (e.g. `awake-for 40`): skip form, run immediately
-- If launched without argument: show a form with a text field pre-focused
-- Same for Awake Until
+**3) TS Orchestrator (Raycast commands) — policy + storage**
+- Implements the **routing policy** for `awake-natural`:
+  - first: check current status (session + schedules)
+  - then: call the intent extractor (bridge) only if needed
+  - then: execute one of the stable actions (start keeper, stop keeper, write schedule file, etc.)
+- Owns persistent schedule storage:
+  - schedules live in a real file (e.g. `schedules.json`) under the extension’s support/data folder
+  - `LocalStorage` remains for lightweight “session metadata” but is not the source of truth for recurrence
 
-### Screen-Off Mode
-`ES_CONTINUOUS | ES_SYSTEM_REQUIRED` without `ES_DISPLAY_REQUIRED` — prevents sleep but does not prevent display timeout.
+### Intent contract (no math in the model)
 
-### Build
-```powershell
-cd npu-awake-ext\keeper
-dotnet publish -c Release -r win-x64 --self-contained true -o ..\assets\bin
-```
-No sparse package registration needed (no WinRT capability declarations required).
+Phi output must be constrained to a small schema that preserves user intent but defers arithmetic:
+- **Action**: `status | start | stop | schedule | unschedule | help`
+- **Start modes**: `indefinite | timed | until | screen-off | while-app`
+- **Raw fields (examples)**:
+  - timed: `{ unit: "minutes"|"hours", value: 90 }`
+  - until: `{ time: "17:30", dateHint?: "today"|"tomorrow", tz?: "local" }`
+  - schedule: `{ days: ["mon","tue",...], start: "09:00", end: "17:00" }`
+  - while-app: `{ application: "Zoom" }` (stretch; see below)
+
+**Deterministic rules in code:**
+- parse/validate `HH:mm` and compute target epoch deterministically
+- normalize units → seconds
+- resolve ambiguous “tomorrow” vs “today” explicitly (policy choice; document it)
+- schedule evaluation uses local time; persist canonical form in `schedules.json`
+
+### Persistence & correctness requirements
+
+- **Schedule persistence**: schedules must survive Raycast restarts and machine reboots.
+- **Single source of truth**: the `schedules.json` file is authoritative for recurrent schedules.
+- **Atomic writes**: TS writes schedules with a safe write strategy (temp file + rename) to avoid partial reads.
+- **Daemon reload**: keeper watches the schedules file and reloads quickly; no polling-only design.
+
+### UX truth-in-advertising (lid-close reality)
+
+`SetThreadExecutionState` prevents idle sleep; it cannot override:
+- closing a laptop lid (unless the user’s power plan says “Do nothing”)
+- pressing the power button
+
+The UI for `awake-natural` and/or `awake` should include a short disclaimer when starting a session or schedule.
+
+### Testing strategy (macOS-style evals, Windows implementation)
+
+Create a small set of deterministic “routing tests” for `awake-natural`:
+- given input + mocked status → expected extracted intent → expected executed action + arguments
+- include edge cases: “90 minutes”, “until 5”, “weekdays 9-5”, “stop”, “status”
+
+These can live as a doc + fixtures first, then become executable tests later.
+
+### Scope notes (what’s in/out for v1)
+
+**In v1:**
+- natural language → start/stop/status + recurrent “days + window” schedules
+- persistent schedules + keeper daemon reload
+- robust JSON extraction and strict schema validation
+
+**Stretch (later):**
+- “while app is running” (requires process detection; Windows analogue to `caffeinate -w`)
+- multiple schedules with named IDs + enable/disable
+- richer language like “next 3 hours” or “until my next meeting” (needs calendar integration; separate design)
 
 ---
 

@@ -1,5 +1,10 @@
-import { showAwakePendingToast } from "./shared/showAwakePendingToast"
+import { showToast, Toast } from "@raycast/api"
+import { stopKeeper } from "./utils/keeper-utils"
 
 export default async function Command() {
-    await showAwakePendingToast("Let Sleep pending")
+    await stopKeeper()
+    await showToast({
+        style: Toast.Style.Success,
+        title: "PC can now sleep",
+    })
 }

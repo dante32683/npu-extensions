@@ -9,10 +9,14 @@ import os from "os"
 import { Jimp } from "jimp"
 import { getSelectedExplorerFiles, getClipboardImage, SelectedFile } from "./utils/powershell-utils"
 import { ExtractTextForm } from "./extract-text"
+import { ensureBridgeRegisteredOnce } from "./utils/ensure-bridge-registered"
 
 const execFileAsync = promisify(execFile)
 
 const BRIDGE_PATH = path.join(environment.assetsPath, "bin", "NpuBridge.exe")
+const BRIDGE_BIN_DIR = path.join(environment.assetsPath, "bin")
+const BRIDGE_MANIFEST_SOURCE = path.join(environment.assetsPath, "..", "bridge", "Package.appxmanifest")
+const BRIDGE_IDENTITY = "NpuBridge.Identity"
 
 function hexToJimpColor(hex: string): number {
     const clean = hex.replace(/^#/, "").padEnd(6, "0")
@@ -75,6 +79,12 @@ export default function Command() {
         }
 
         try {
+            await ensureBridgeRegisteredOnce({
+                identityName: BRIDGE_IDENTITY,
+                binDir: BRIDGE_BIN_DIR,
+                manifestSourcePath: BRIDGE_MANIFEST_SOURCE,
+            })
+
             const { stdout, stderr } = await execFileAsync(BRIDGE_PATH, [command, file.path, ...extraArgs], {
                 cwd: path.dirname(BRIDGE_PATH),
                 windowsHide: true,

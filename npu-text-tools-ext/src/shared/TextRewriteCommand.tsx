@@ -5,9 +5,13 @@ import { promisify } from "util"
 import path from "path"
 import fs from "fs"
 import os from "os"
+import { ensureBridgeRegisteredOnce } from "../utils/ensure-bridge-registered"
 
 const execFileAsync = promisify(execFile)
 const BRIDGE_PATH = path.join(environment.assetsPath, "bin", "NpuBridge.exe")
+const BRIDGE_BIN_DIR = path.join(environment.assetsPath, "bin")
+const BRIDGE_MANIFEST_SOURCE = path.join(environment.assetsPath, "..", "bridge", "Package.appxmanifest")
+const BRIDGE_IDENTITY = "NpuTextToolsBridge.Identity"
 
 type Mode = "grammar" | "formal" | "concise" | "bullets" | "simplify" | "custom"
 
@@ -77,6 +81,12 @@ export function TextRewriteCommand({
             } else {
                 fs.writeFileSync(tempFile, text, "utf8")
             }
+
+            await ensureBridgeRegisteredOnce({
+                identityName: BRIDGE_IDENTITY,
+                binDir: BRIDGE_BIN_DIR,
+                manifestSourcePath: BRIDGE_MANIFEST_SOURCE,
+            })
 
             const { stdout } = await execFileAsync(BRIDGE_PATH, ["phi-rewrite", mode, tempFile], {
                 cwd: path.dirname(BRIDGE_PATH),

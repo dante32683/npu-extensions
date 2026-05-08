@@ -45,6 +45,12 @@ internal static class Program
             ? ES_CONTINUOUS | ES_SYSTEM_REQUIRED
             : ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED;
 
+        Console.WriteLine($"MODE: {mode}");
+        if (expiry.HasValue)
+        {
+            Console.WriteLine($"EXPIRY: {expiry.Value.ToUnixTimeSeconds()}");
+        }
+
         while (expiry is null || DateTimeOffset.UtcNow < expiry.Value)
         {
             SetThreadExecutionState(flags);

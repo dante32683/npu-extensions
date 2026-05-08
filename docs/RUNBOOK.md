@@ -15,8 +15,16 @@ This is a **suite of standalone** Raycast for Windows extensions. Each folder un
 **Non-exhaustive examples** (see registry for truth):
 
 - **NPU / WinRT imaging** — e.g. foreground extraction, scaling, OCR-related paths.
-- **Phi-Silica / text** — e.g. `Microsoft.Windows.AI.Text.LanguageModel` (used in `npu-text-tools-ext` and `npu-notes-ext`).
-- **Awake / Win32** — separate from sparse `NpuBridge` activation.
+- **Phi-Silica / text** — e.g. `Microsoft.Windows.AI.Text.LanguageModel` (used in `npu-text-tools-ext`, `npu-notes-ext`, and `npu-awake-ext`).
+- **Awake / Win32** — background persistence for system state.
+
+### Background process pattern
+
+Used by **`npu-awake-ext`** for persistent state:
+1. **Spawn detached**: `spawn(exe, args, { detached: true, stdio: 'ignore' })`.
+2. **PID Management**: Store `child.pid` in `LocalStorage` to track the process across command invocations.
+3. **Kill on demand**: Use `process.kill(pid)` to stop the session.
+4. **Lifecycle**: Use `child.unref()` so the Node.js event loop doesn't wait for the helper to exit.
 
 ## npm commands (any extension)
 

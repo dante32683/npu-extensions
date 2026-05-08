@@ -6,9 +6,13 @@ import path from "path"
 import fs from "fs"
 import os from "os"
 import { getNotesFolder, saveNote } from "./utils/note-utils"
+import { ensureBridgeRegisteredOnce } from "./utils/ensure-bridge-registered"
 
 const execFileAsync = promisify(execFile)
 const BRIDGE_PATH = path.join(environment.assetsPath, "bin", "NpuBridge.exe")
+const BRIDGE_BIN_DIR = path.join(environment.assetsPath, "bin")
+const BRIDGE_MANIFEST_SOURCE = path.join(environment.assetsPath, "..", "bridge", "Package.appxmanifest")
+const BRIDGE_IDENTITY = "NpuNotesBridge.Identity"
 
 interface FormValues {
     note: string
@@ -51,6 +55,12 @@ export default function Command() {
         try {
             tempFile = path.join(os.tmpdir(), `phi-note-${Date.now()}.tmp`)
             fs.writeFileSync(tempFile, rawNote, "utf8")
+
+            await ensureBridgeRegisteredOnce({
+                identityName: BRIDGE_IDENTITY,
+                binDir: BRIDGE_BIN_DIR,
+                manifestSourcePath: BRIDGE_MANIFEST_SOURCE,
+            })
 
             const { stdout } = await execFileAsync(BRIDGE_PATH, ["phi-note", tempFile], {
                 cwd: path.dirname(BRIDGE_PATH),

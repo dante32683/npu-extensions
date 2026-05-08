@@ -17,9 +17,13 @@ import { execFile } from "child_process"
 import { promisify } from "util"
 import path from "path"
 import fs from "fs"
+import { ensureBridgeRegisteredOnce } from "./utils/ensure-bridge-registered"
 
 const execFileAsync = promisify(execFile)
 const BRIDGE_PATH = path.join(environment.assetsPath, "bin", "NpuBridge.exe")
+const BRIDGE_BIN_DIR = path.join(environment.assetsPath, "bin")
+const BRIDGE_MANIFEST_SOURCE = path.join(environment.assetsPath, "..", "bridge", "Package.appxmanifest")
+const BRIDGE_IDENTITY = "NpuBridge.Identity"
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".gif", ".webp"]
 
 type OcrResult = {
@@ -72,6 +76,12 @@ export function ExtractTextForm() {
         const results: OcrResult[] = []
 
         try {
+            await ensureBridgeRegisteredOnce({
+                identityName: BRIDGE_IDENTITY,
+                binDir: BRIDGE_BIN_DIR,
+                manifestSourcePath: BRIDGE_MANIFEST_SOURCE,
+            })
+
             for (const file of selectedFiles) {
                 const { stdout, stderr } = await execFileAsync(BRIDGE_PATH, ["ocr", file.path], {
                     cwd: path.dirname(BRIDGE_PATH),
