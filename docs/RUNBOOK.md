@@ -74,6 +74,7 @@ To list related registrations: `Get-AppxPackage | Where-Object { $_.Name -match 
 ### IPC contracts (extension-specific)
 
 - **Argv and JSON shapes differ per bridge** — the image editor uses command names + paths; text tools uses `phi-rewrite` + mode + temp file; future bridges add new verbs in their own `Program.cs`.
+- **Planned (`FEATURE_PLAN.md` §12):** `npu-text-tools-ext` may ship a **`hotkey-helper`** WinExe that spawns the **same** `phi-rewrite` contract with identical `cwd` rules — not a second WinRT host.
 - **Do not** assume all bridges share the same success JSON—read the spawn site in TS and the matching C# branch.
 - **Reference:** `EXTENSION_REGISTRY.md` + top-of-file or per-`case` comments in `bridge/Program.cs`.
 
@@ -135,3 +136,64 @@ For custom COM access from CsWinRT (e.g. `IMemoryBufferByteAccess`), use WinRT i
 ### Model not ready / slow first run
 
 `EnsureReadyAsync()` may download weights; 30–60s first time is normal.
+
+### Phi-Silica "Limited Access Feature" / access denied (only one extension breaks)
+
+Symptom (examples):
+
+- `Access is denied. Limited Access Feature is not available: com.microsoft.windows.ai.languagemodel. Status: 3`
+- One Phi-powered extension works (e.g. `npu-text-tools-ext`), but another fails (e.g. `npu-notes-ext`).
+
+Likely cause:
+
+- The failing extension has a **stale or mismatched** `Microsoft.Windows.AI.Text.*` runtime DLLs in its `assets/bin/`.
+  This can happen when publishing with a different Windows App SDK / AI package version, leaving behind older/newer DLLs.
+
+Fix:
+
+1. Confirm the failing extension’s `assets/bin` contains a consistent set of AI/Text DLLs (compare against a known-good Phi bridge).
+2. **Delete** the AI/Text artifacts in `assets/bin/` (e.g. `Microsoft.Windows.AI.Text.dll`, `Microsoft.Windows.AI.Text.Projection.dll`, `Microsoft.Windows.AI.Text.winmd`, `Microsoft.Windows.AI.winmd`) to avoid stale leftovers.
+3. Re-publish the bridge:
+
+```powershell
+cd <ext>\bridge
+dotnet publish -c Release -r win-x64 --self-contained true -o ..\assets\bin
+```
+
+4. Re-run `register-bridge.ps1` if needed (manifest/identity changed or registration got stale).
+
+Policy note:
+
+- Keep Phi bridges aligned on the **same** Windows App SDK package line where possible. Mixing stable vs experimental can change which AI/Text runtime gets bundled into `assets/bin`.
+
+### Windows Terminal (`wt.exe`) launches the “wrong” shell/profile (Dev Toolbox)
+
+Symptoms:
+
+- `npu-dev-toolbox-ext` “Open in Terminal” opens Windows Terminal, but the tab title shows `C:\Windows\system32\cmd.exe` (or otherwise looks like the wrong profile).
+- Attempts to set a profile appear to be ignored.
+- “Windows Terminal (wt) not found” errors even though `wt.exe` launches from a normal shell.
+
+Causes and fixes:
+
+- **Default profile mismatch**: Set Windows Terminal’s **Startup → Default profile** to your desired profile (e.g. PowerShell 7).
+- **Multiple `wt.exe` resolution paths**: `wt.exe` is commonly a **0-byte App Execution Alias shim** at `%LOCALAPPDATA%\Microsoft\WindowsApps\wt.exe`. This is normal; don’t assume file size indicates “real exe”.
+- **Do not validate PATH commands via filesystem checks**: `fs.existsSync("wt.exe")` will fail; use `where.exe wt.exe` (or equivalent) to check availability.
+- **Argument placement**:
+  - Working directory should be passed as a `new-tab` option: `wt.exe ... new-tab -d "<folder>"`.
+  - Profile selection `-p` is also a `new-tab` option; place it after the subcommand: `wt.exe ... new-tab -p "<nameOrGuid>" -d "<folder>"`.
+  - Passing unsupported flags can trigger modal Windows Terminal “Help” popups—avoid probing flags in normal flows.
+
+Where this is implemented:
+
+- `npu-dev-toolbox-ext/src/utils/launchers.ts` (Windows Terminal invocation and validation logic)
+
+### NPU Notes — App Content Index (`AppContentIndexer`, planned)
+
+Semantic note search / related-notes may move from **Phi per-candidate classification** to **Windows App SDK App Content Search** (`AppContentIndexer`: local semantic + lexical index, official RAG retrieval pattern). That work is **specified** in **`FEATURE_PLAN.md` §10 “Implementation audit & AppContentIndexer integration”** (including sparse-bridge feasibility spike, capability gating, and fallback ladder).
+
+Operational expectations once implemented:
+
+- **`systemAIModels`** is already declared on `NpuNotesBridge.Identity`; semantic indexing still requires **successful index capability initialization** (components may download — similar patience as first Phi run).
+- The index is **not** tied to files on disk; if notes change outside the extension, run the documented **rebuild index** path (see `npu-notes-ext/NOTES.md` when shipped) or re-save from the app.
+- Troubleshooting partial results: see Microsoft guidance on **async indexing** and **`WaitForIndexCapabilitiesAsync`** in `docs/INDEX_INFO.md`.

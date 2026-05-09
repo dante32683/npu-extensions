@@ -2,7 +2,8 @@
 
 Extension-specific notes for **`npu-text-tools-ext`**.
 
-- **Planning & prompts:** `FEATURE_PLAN.md` §3 (Phi-Silica Text Tools)—**primary spec and lesson-learned log** for this extension.
+- **Forward work (clean summary):** `docs/FORWARD_ROADMAP.md` §2 (global hotkeys) and §3 (`TextRewriter`).
+- **Planning archive:** `FEATURE_PLAN.md` §3 (Phi-Silica Text Tools) and §12 (expanded hotkey spec). **Official Phi / Rewrite APIs:** `docs/REWRITE_INFO.md`.
 - **Bridge IPC:** `bridge/Program.cs` — argv `phi-rewrite`, modes `grammar | formal | concise | bullets | simplify | custom`; temp file plain text or JSON `{ "instruction", "text" }` for `custom`.
 - **UI:** Shared `src/shared/TextRewriteCommand.tsx`; one thin command file per Raycast command under `src/`.
 - **Sparse identity:** `NpuTextToolsBridge.Identity` (see `bridge/Package.appxmanifest` and **`EXTENSION_REGISTRY.md`**).

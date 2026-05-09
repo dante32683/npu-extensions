@@ -6,11 +6,12 @@ How to build, change, and **record** work so humans and any AI tool stay aligned
 
 | Order | File | Role |
 |-------|------|------|
-| 1 | **`FEATURE_PLAN.md`** | **Primary planning database** — roadmap, feature specs, dated lessons. Do not permanently delete entries; strike through and date when superseded. |
-| 2 | **`EXTENSION_REGISTRY.md`** | Current facts: which folder has which bridge, sparse `Identity` names, publish conventions. |
-| 3 | **`docs/RUNBOOK.md`** | Bridge mechanics, Phi / WinRT patterns, troubleshooting, operational gotchas. |
-| 4 | **`<extension>/NOTES.md`** | Extension-specific quirks and pointers (see below). |
-| 5 | **`CHANGELOG.md`** | User-visible / bridge **release notes** — append every merged change set. |
+| 1 | **`docs/FORWARD_ROADMAP.md`** | **Active forward roadmap** — scannable next-up work (notes AppContentIndexer/RAG, text hotkeys, SDK alignment, `TextRewriter`, etc.). Update this when scope changes. |
+| 2 | **`FEATURE_PLAN.md`** | **Full planning archive** — deep specs, large §§, suite UX conventions, dated lessons, struck-through history. Use for detail behind the forward roadmap. |
+| 3 | **`EXTENSION_REGISTRY.md`** | Current facts: which folder has which bridge, sparse `Identity` names, publish conventions. |
+| 4 | **`docs/RUNBOOK.md`** | Bridge mechanics, Phi / WinRT patterns, troubleshooting, operational gotchas. |
+| 5 | **`<extension>/NOTES.md`** | Extension-specific quirks and pointers (see below). |
+| 6 | **`CHANGELOG.md`** | User-visible / bridge **release notes** — append every merged change set. |
 
 **Human onboarding (meta):** [`docs/HOW_TO_USE_THE_DOC_SYSTEM.md`](docs/HOW_TO_USE_THE_DOC_SYSTEM.md) — how to use this doc layout; omitted from automatic context via **`.cursorignore`**, **`.geminiignore`**, **`.claudeignore`** (and **`.agentignore`** as a non-standard extra). **Cursor** uses `.cursorignore`, not `.agentignore` ([Cursor ignore files](https://cursor.com/docs/context/ignore-files)).
 

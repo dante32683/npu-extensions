@@ -14,6 +14,8 @@ type ExtensionPreferences = {
   "terminalChoice": "wt" | "pwsh" | "powershell" | "cmd" | "custom",
   /** Windows Terminal - When enabled, Windows Terminal opens a new tab in an existing window instead of a new window. */
   "terminalNewTab": boolean,
+  /** Windows Terminal Profile Name - Optional profile name to open when Terminal is set to Windows Terminal (wt). Leave empty to use your Windows Terminal default profile. */
+  "wtProfileName": string,
   /** Terminal Custom Path - Full path to a .exe or .lnk to use when 'Terminal' is set to 'Custom Path'. */
   "terminalCustomPath": string,
   /** IDE - Which IDE/editor to launch when 'Open in IDE' is run. */

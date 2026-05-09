@@ -31,7 +31,13 @@ TestResults/
 # (Tracked for collaboration: AGENTS.md, CLAUDE.md, GEMINI.md, FEATURE_PLAN.md — hub + stubs.)
 COPILOT_CONTEXT.md
 NPU_INFO.md
+RAG_INFO.md
+INDEX_INFO.md
+REWRITE_INFO.md
+HOW_TO_USE_THE_DOC_SYSTEM.md
+FORWARD_ROADMAP.md
 *.skill
+
 
 # Tool output (regenerated on every run)
 scripts/audit-toasts.report.json

@@ -9,7 +9,9 @@
 
 type ExtensionPreferences = {
   /** Notes Folder - Where your notes are saved. Defaults to Documents\RaycastNotes. */
-  "notesFolder": string
+  "notesFolder": string,
+  /** Prefill From Clipboard - When enabled, the Add Note form pre-fills with clipboard text. */
+  "prefillFromClipboard": boolean
 }
 
 /** Preferences accessible in all the extension's commands */
@@ -20,6 +22,10 @@ declare namespace Preferences {
   export type AddNote = ExtensionPreferences & {}
   /** Preferences accessible in the `browse-notes` command */
   export type BrowseNotes = ExtensionPreferences & {}
+  /** Preferences accessible in the `find-related` command */
+  export type FindRelated = ExtensionPreferences & {}
+  /** Preferences accessible in the `search-notes` command */
+  export type SearchNotes = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
@@ -27,5 +33,9 @@ declare namespace Arguments {
   export type AddNote = {}
   /** Arguments passed to the `browse-notes` command */
   export type BrowseNotes = {}
+  /** Arguments passed to the `find-related` command */
+  export type FindRelated = {}
+  /** Arguments passed to the `search-notes` command */
+  export type SearchNotes = {}
 }
 

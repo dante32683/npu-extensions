@@ -1,7 +1,12 @@
-import { List, ActionPanel, Action, Icon, open, showToast, Toast } from "@raycast/api"
+import { List, ActionPanel, Action, Alert, Icon, open, showToast, Toast, confirmAlert } from "@raycast/api"
 import { useEffect, useState, useMemo } from "react"
 import path from "path"
+import fs from "fs"
+import { execFile } from "child_process"
+import { promisify } from "util"
 import { getNotesFolder, getAllNotes, Note } from "./utils/note-utils"
+
+const execFileAsync = promisify(execFile)
 
 export default function Command() {
     const [notes, setNotes] = useState<Note[]>([])
@@ -44,6 +49,64 @@ export default function Command() {
 
     const categories = Object.keys(groupedNotes).sort()
 
+    const moveToRecycleBin = async (filePath: string) => {
+        // Prefer Recycle Bin over permanent delete.
+        // If this fails, we do NOT fall back to permanent deletion.
+        const script = `& {
+  $p = ${JSON.stringify(filePath)}
+  Add-Type -AssemblyName Microsoft.VisualBasic
+  [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile(
+    $p,
+    [Microsoft.VisualBasic.FileIO.UIOption]::OnlyErrorDialogs,
+    [Microsoft.VisualBasic.FileIO.RecycleOption]::SendToRecycleBin
+  )
+}`
+
+        try {
+            await execFileAsync("powershell.exe", ["-NoProfile", "-Command", script], {
+                windowsHide: true,
+                maxBuffer: 10 * 1024 * 1024,
+            })
+        } catch (err: unknown) {
+            const e = err as { stderr?: string; message?: string }
+            const details = e.stderr?.trim()
+            throw new Error(details || e.message || "Failed to move file to Recycle Bin.")
+        }
+    }
+
+    const deleteNote = async (note: Note) => {
+        const confirmed = await confirmAlert({
+            title: "Delete Note",
+            message: `Move "${note.title.replace(/-/g, " ")}" to the Recycle Bin?`,
+            primaryAction: {
+                title: "Delete Note",
+                style: Alert.ActionStyle.Destructive,
+            },
+        })
+
+        if (!confirmed) return
+
+        try {
+            if (!fs.existsSync(note.path)) {
+                throw new Error("File not found.")
+            }
+
+            await moveToRecycleBin(note.path)
+            setNotes(prev => prev.filter(n => n.path !== note.path))
+            await showToast({
+                style: Toast.Style.Success,
+                title: "Note Deleted",
+                message: path.basename(note.path),
+            })
+        } catch (err) {
+            await showToast({
+                style: Toast.Style.Failure,
+                title: "Delete Failed",
+                message: err instanceof Error ? err.message : String(err),
+            })
+        }
+    }
+
     return (
         <List
             isLoading={isLoading}
@@ -71,6 +134,15 @@ export default function Command() {
                                             icon={Icon.Folder}
                                             onAction={() => open(path.dirname(note.path))}
                                         />
+                                        <ActionPanel.Section title="Manage">
+                                            <Action
+                                                title="Delete Note"
+                                                icon={Icon.Trash}
+                                                style={Action.Style.Destructive}
+                                                shortcut={{ modifiers: ["ctrl"], key: "d" }}
+                                                onAction={() => deleteNote(note)}
+                                            />
+                                        </ActionPanel.Section>
                                     </ActionPanel>
                                 }
                             />

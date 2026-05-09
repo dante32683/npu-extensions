@@ -74,6 +74,14 @@
             "label": "Open as a new tab in an existing Windows Terminal window"
         },
         {
+            "name": "wtProfileName",
+            "title": "Windows Terminal Profile Name",
+            "description": "Optional profile name to open when Terminal is set to Windows Terminal (wt). Leave empty to use your Windows Terminal default profile.",
+            "type": "textfield",
+            "required": false,
+            "default": ""
+        },
+        {
             "name": "terminalCustomPath",
             "title": "Terminal Custom Path",
             "description": "Full path to a .exe or .lnk to use when 'Terminal' is set to 'Custom Path'.",

@@ -18,6 +18,18 @@
             "title": "Browse Notes",
             "description": "List and filter saved notes by category.",
             "mode": "view"
+        },
+        {
+            "name": "find-related",
+            "title": "Find Related Notes",
+            "description": "Use Phi-Silica to find notes related to a selected note.",
+            "mode": "view"
+        },
+        {
+            "name": "search-notes",
+            "title": "Search Notes",
+            "description": "Search notes by keyword, then fall back to Phi-Silica for semantic matches.",
+            "mode": "view"
         }
     ],
     "preferences": [
@@ -28,6 +40,15 @@
             "type": "directory",
             "required": false,
             "default": ""
+        },
+        {
+            "name": "prefillFromClipboard",
+            "title": "Prefill From Clipboard",
+            "description": "When enabled, the Add Note form pre-fills with clipboard text.",
+            "type": "checkbox",
+            "required": false,
+            "default": false,
+            "label": "Prefill Add Note with clipboard text"
         }
     ],
     "dependencies": {

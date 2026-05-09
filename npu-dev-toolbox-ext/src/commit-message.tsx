@@ -32,6 +32,7 @@ function getLauncherPrefs(): LauncherPrefs {
     return {
         terminalChoice: prefs.terminalChoice,
         terminalNewTab: Boolean(prefs.terminalNewTab),
+        wtProfileName: prefs.wtProfileName ?? "",
         terminalCustomPath: prefs.terminalCustomPath ?? "",
         ideChoice: prefs.ideChoice,
         ideCustomPath: prefs.ideCustomPath ?? "",

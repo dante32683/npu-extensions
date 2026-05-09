@@ -1,6 +1,8 @@
 # Feature Plan
 
-> **Suite planning database:** This file is the **primary place** for roadmap, feature specs, and dated / struck-through lessons as the suite evolves. **Do not permanently delete historical content**—strike through and date superseded parts, or move tiny redundant fragments into **`CHANGELOG.md`** / **`docs/RUNBOOK.md`** only when they’re fully captured elsewhere.
+> **Historical planning database (large):** This file retains **full specs, long narratives, suite-wide conventions, and dated / struck-through lessons**. **Do not permanently delete historical content**—strike through and date superseded parts, or move tiny redundant fragments into **`CHANGELOG.md`** / **`docs/RUNBOOK.md`** only when they’re fully captured elsewhere.
+>
+> **Active “what we’re building next” (clean summary):** [`docs/FORWARD_ROADMAP.md`](docs/FORWARD_ROADMAP.md) — consolidated forward work (notes indexer/RAG, text hotkeys, bridge alignment, `TextRewriter`, etc.). Prefer that doc for day-to-day scope; use **this** file for depth and archaeology.
 >
 > **Where else to look:** **Contributor workflow & logging:** [`CONTRIBUTING.md`](CONTRIBUTING.md). **Factual wiring** (bridges, sparse `Identity` names): [`EXTENSION_REGISTRY.md`](EXTENSION_REGISTRY.md). **Technical depth & troubleshooting:** [`docs/RUNBOOK.md`](docs/RUNBOOK.md). **Release summary:** [`CHANGELOG.md`](CHANGELOG.md). **Per-extension notes:** `<extension>/NOTES.md`. The repo files `CLAUDE.md`, `AGENTS.md`, and `GEMINI.md` are **stubs** that point at the same hub for different AI products.
 >
@@ -115,6 +117,7 @@ These files needed updating before the respective extensions could run in `npm r
 | 8 | Search Notes | `npu-notes-ext` | Later |
 | 9 | NPU Dev Toolbox (Git Commit) | `npu-dev-toolbox-ext` (new) | Medium |
 | 10 | Semantic Note Linking | `npu-notes-ext` | Medium |
+| 11 | Workspace Search (Smart Grep + Phi Assist) | `npu-dev-toolbox-ext` | Medium |
 
 > **Status (2026-05-07):** Items **#1 Super Resolution**, **#2 OCR**, **#3 Phi-Silica Text Tools**, and **#4 Smart Note Taker** are implemented. **#5 Awake** is currently being redesigned as **Smart Awake** to incorporate NPU-powered natural language schedule parsing. Next up after the redesign is **#6 Sticker Maker**. Items **#9** and **#10** are new additions to the roadmap. The PENDING `package.json` section below remains historical reference.
 
@@ -265,6 +268,12 @@ NpuBridge.exe phi-rewrite <mode> <tempInputFile>
 - **Generation (current):** `using var ctx = model.CreateContext(systemPrompt); var response = await model.GenerateResponseAsync(ctx, userText, new LanguageModelOptions());` — output text remains `response.Text`. See Microsoft Learn: `GenerateResponseAsync(LanguageModelContext, String, LanguageModelOptions)`.
 - **Capability:** `systemAIModels` in `Package.appxmanifest` is sufficient for Developer Mode. No LAF token needed for local development.
 - Bridge is a **new** C# project at `npu-text-tools-ext/bridge/` — do not reuse npu-image-editor's bridge.
+
+### Global hotkey presets — rewrite selection in-place (planned)
+
+**§12** specifies a **Windows companion helper** (keeper-style) that binds **user-configurable global hotkeys** to the **same** `phi-rewrite` bridge, using a **clipboard capture / paste-back** pipeline so users never open Raycast. Presets live in `%LocalAppData%\NpuTextTools\presets.json`; Raycast provides setup and editing UX.
+
+**API direction:** Prefer **`TextRewriter`** / official **Rewrite** skill from **`docs/REWRITE_INFO.md`** for builtin rewrite-style modes where the SDK allows; keep **`LanguageModel` + `CreateContext`** for **custom** instructions and any mode the skill API cannot express. See §12 table “Official API alignment.”
 
 <!--
 ### DEBUG / EXTENSION NOTES — Section 3 (Phi-Silica Text Tools), 2026-05-07
@@ -865,7 +874,7 @@ Rules:
 ### New command: `find-related.tsx`
 
 - Lists all saved notes (reusing `getAllNotes`) in a `List`.
-- Selecting a note runs `phi-related` against the **other 20 most recent notes** and renders results in a `Detail` view with `Action.Open` on each related note.
+- Selecting a note runs `phi-related` against the **other 20 most recent notes** and renders results in a **second `List`** with `Action.Open` on each related note *(spec originally mentioned a `Detail` view; shipped UI uses `List` — see § “Implementation audit & AppContentIndexer integration”)*.
 - Same UX template as `browse-notes.tsx` — same `List.Item` shape, same accessory format, same actions ordering.
 
 ### Re-introduce `search-notes` (separate but adjacent)
@@ -874,12 +883,474 @@ Rules:
 
 ### Future: embeddings (out of scope for v1; design hook only)
 
-If/when a stable embedding API ships in `Microsoft.Windows.AI` (or via `Microsoft.Windows.AI.MachineLearning` ONNX-runtime path):
+> **Update (2026-05-08):** Windows App SDK **AppContentIndexer** (`Microsoft.Windows.AI.Search.Experimental.AppContentIndex`) provides **platform-managed semantic (and lexical) retrieval** over strings the app registers. That is **not** the same as exposing raw embedding vectors, but it **does** supersede “Phi yes/no per candidate” for *retrieval* at scale when the API works in our sparse bridge. Prefer indexer-based retrieval first; keep Phi for **generation** (formatting, RAG answers, optional final relatedness validation). See **§ Implementation audit & AppContentIndexer integration** below. The `phi-embed` / kNN path remains a fallback if indexer is unavailable or unsuitable.
+
+If/when a stable **first-party embedding** API ships in `Microsoft.Windows.AI` (or via `Microsoft.Windows.AI.MachineLearning` ONNX-runtime path):
 
 - Add a new bridge mode `phi-embed <text>` returning `{ "vector": [...] }`.
 - Cache embeddings alongside the note as a sibling `<filename>.emb.json` (or in a single `embeddings.bin` blob).
 - Replace the candidate-set + classifier step with a kNN over cached vectors.
 - Frontmatter `related:` schema **does not change** — only the producer changes.
+
+### Implementation audit & AppContentIndexer integration (2026-05-08)
+
+This subsection records **what is actually implemented today**, whether it follows **suite conventions**, and a **thorough plan** to align with Microsoft’s official **App Content Search** / **RAG** pattern documented in-repo at `docs/RAG_INFO.md` and `docs/INDEX_INFO.md` (Windows App SDK / Windows AI).
+
+#### A. Shipped behavior vs the §10 specification above
+
+| Item | §10 spec | Current code (as of 2026-05-08) |
+|------|-----------|----------------------------------|
+| Bridge `phi-note` | Yes | **Implemented** — `bridge/Program.cs` |
+| Bridge `phi-related` | Yes | **Implemented** — JSON in/out, `ExtractJsonObject`, validates paths only implicitly in TS (`find-related.tsx` filters to candidate set) |
+| Bridge `phi-search-relevance` | Yes | **Implemented** |
+| `find-related.tsx` | List notes; run Phi on **20 most recent** other notes; **Detail** view for results | **Partial** — List for picker and List for results (not Detail); candidates = `allNotes` sorted by `getAllNotes` (newest first), exclude selected, **`slice(0, 20)`** — matches “20 most recent” intent |
+| `search-notes.tsx` | Keyword → if &lt;3 hits, Phi yes/no per non-match | **Implemented with differences** — keyword filter; auto semantic when `keywordHits.length < 3` after debounce; scans up to **`MAX_PHI_CHECKS` (30)** **first** non-keyword notes in vault order (newest-first), not “all non-matching” |
+| Post-save bidirectional `related:` in frontmatter | Required | **Not implemented** — `add-note.tsx` stops after `saveNote`; `note-utils.ts` has **no** `related` field in `parseNote` / `saveNote` |
+| `note-linker.ts` + atomic writes | Spec’d | **Missing** — no linker utility |
+| `package.json` `search-notes` | Re-add | **Present** |
+
+**Conclusion:** Semantic **search** and **Find Related** use **Phi-Silica as a binary relevance classifier** over small candidate sets. The **storage and automation** half of §10 (post-save linking + `related:` YAML) is **still outstanding**.
+
+#### B. Suite convention compliance (`CONTRIBUTING.md`, `EXTENSION_REGISTRY.md`, bridge patterns)
+
+**What already matches established suite practice**
+
+- **Sparse package:** `NpuNotesBridge.Identity`, `Package.appxmanifest` beside published `NpuBridge.exe`, **`systemAIModels`** + `runFullTrust` — satisfies Microsoft’s stated prerequisite for **semantic** App Content Search (see `docs/RAG_INFO.md`).
+- **Self-contained publish:** `NpuBridge.csproj` uses `WindowsAppSDKSelfContained`, `SelfContained`, Win10 target 26100 — same family as other bridges.
+- **Raycast → bridge:** `ensureBridgeRegisteredOnce` before `execFile` in `add-note.tsx`, `find-related.tsx`, `search-notes.tsx` — correct.
+- **IPC contract:** argv dispatcher, **one JSON object on stdout**, errors as `{ status: "error", message }`, diagnostics on stderr — matches other extensions.
+- **Phi robustness:** `ExtractJsonObject` for fenced/prose JSON — matches `FEATURE_PLAN` guidance for Phi bridges.
+- **Extension isolation:** No cross-extension npm deps — correct per `CONTRIBUTING.md`.
+
+**Gaps (conventions we should tighten even without AppContentIndexer)**
+
+1. **Duplicated bridge glue** — Each command repeats `BRIDGE_PATH`, `BRIDGE_BIN_DIR`, `manifestSourcePath`, `execFile` + stderr handling. **`npu-dev-toolbox-ext`** (per §9 plan) uses a single `run-bridge.ts`; notes should adopt the same **within-extension** helper (copy pattern; do not import across extensions) so argv + error parsing stay consistent.
+2. **Result style (optional)** — Some newer suite text mentions `{ ok: true, value } | { ok: false, error }` at the UI boundary; notes currently **throw/toast from ad-hoc `Error`**. Low priority but improves consistency if we touch these files anyway.
+3. **§10 doc drift** — `find-related` results are a **List**, not a **Detail** view; update the bullet above when editing §10 for accuracy, or change the UI to match the spec.
+4. **`NOTES.md` accuracy** — Keep `npu-notes-ext/NOTES.md` aligned: post-save linking is **planned in this plan**, not shipped, until implemented.
+
+#### C. How the current “semantic” features work (for future maintainers)
+
+**`search-notes.tsx`**
+
+1. Loads all notes once via `getAllNotes` (Markdown + frontmatter parsed in `note-utils.ts`).
+2. **Keyword tier:** case-fold substring match over `title`, `category`, `raw`, `content`.
+3. **Phi tier (labeled “Semantic” in UI):** Runs only when the query is non-empty, length ≥ 3, and **keyword hit count &lt; 3**. After `SEMANTIC_DEBOUNCE_MS`, for each of up to 30 notes **not** in the keyword set (in vault order), calls `phi-search-relevance` with `{ query, candidate: { path, title, category, preview } }` where `path` is **`noteIdFromPath`** (relative path without `.md`). Stops after 10 positives. Caches per `(query, noteId)`.
+
+**`find-related.tsx`**
+
+1. User selects a note; **Find Related** builds `newNote` + **`candidates`: other notes, max 20**, same preview shape.
+2. `phi-related` returns `related: string[]`; TS **filters** to paths present in `candidates` (matches §10 “drop unknown paths”).
+3. No persistence — does **not** write `related:` to disk.
+
+**`add-note.tsx`**
+
+1. Only `phi-note` → `saveNote`. No indexer, no linker, no second bridge call.
+
+**Important limitation:** Both Phi tiers are **O(candidates × model calls)** and bounded by arbitrary caps (20 / 30). They are **not** full-vault semantic search and will miss relevant notes outside the scanned prefix.
+
+#### D. Official Microsoft pattern (AppContentIndexer) vs our pattern
+
+| Concern | Microsoft (`docs/RAG_INFO.md`, `docs/INDEX_INFO.md`) | NPU Notes today |
+|--------|--------------------------------------------------------|-----------------|
+| Retrieval | **`AppContentIndexer`**: `GetOrCreateIndex`, `AddOrUpdate` text, `CreateTextQuery`, `GetNextMatches` | Scan files in TS + **Phi yes/no** per candidate |
+| Match payload | `ContentId` + `TextOffset` / `TextLength` — app **must** load original text | N/A (whole-note preview string to Phi) |
+| Index freshness | **App** must update index when content changes; **no** file watcher | Only **would** change if we add indexer sync on save/delete |
+| Capability gating | `GetIndexCapabilitiesOfCurrentSystem`, `WaitForIndexCapabilitiesAsync`, per-capability state | `LanguageModel.EnsureReadyAsync` only |
+| Threading | Avoid blocking UI; indexer ops can be slow | Work runs in **child process** (good); Raycast UI still waits on serial Phi calls for search |
+| RAG | Retrieve snippets → build prompt → **LLM** | We could: retrieve via indexer → **single** Phi `GenerateResponse` (official RAG shape) |
+| Package | Packaged app + **`systemAIModels`** | Already satisfied for bridge identity |
+
+**`ContentId` mapping (recommended):** Use the same string as today’s **`noteIdFromPath`** (relative to `notesFolder`, forward slashes, no `.md`). The bridge resolves disk path = `path.join(notesFolder, contentId + '.md')` for reads. This matches Microsoft’s “key is the contentId of the item” pattern.
+
+#### E. Integration plan — phases (can land as separate PRs)
+
+**Phase 0 — Feasibility spike (blocking)**
+
+- In `npu-notes-ext/bridge`, prove **`AppContentIndexer.GetOrCreateIndex`** (fixed name, e.g. `npu-notes-v1`), `AddOrUpdate` one string, `CreateTextQuery`, read matches, slice text using offsets.
+- Confirm behavior under **sparse registration** (same process as current `NpuBridge.exe`). If WinRT throws or index creation fails, document the exact error in `docs/RUNBOOK.md` and keep Phi fallback as primary.
+- Add **`#pragma warning disable CS8305`** (or equivalent) for experimental namespace; align `Microsoft.WindowsAppSDK` package line with whatever version exposes `Microsoft.Windows.AI.Search.Experimental.AppContentIndex` (may require bump from current `2.0.0-experimental4` — verify against SDK release notes when implementing).
+
+**Phase 1 — Bridge IPC: index lifecycle**
+
+Add argv modes (names indicative; finalize when coding):
+
+- `index-upsert` — JSON: `{ notesFolder, contentId, text }` or batch array; `AddOrUpdate` from string; return `{ status, indexed }`.
+- `index-remove` — `{ contentId }` or list (if API supports remove; if not, document “rebuild only”).
+- `index-query` — `{ query, maxResults }` → `{ status, matches: [{ contentId, textOffset, textLength, snippet? }] }` where `snippet` is resolved in C# by reading the file under `notesFolder` (official pattern).
+- `index-status` or `index-capabilities` — surface `GetIndexCapabilitiesOfCurrentSystem` / instance capabilities after `WaitForIndexCapabilitiesAsync` for TS to show “semantic search unavailable” toasts.
+
+**Convention:** Same stdout JSON line, temp file for large payloads, update **`EXTENSION_REGISTRY.md`** bridge column when argv list changes.
+
+**Phase 2 — TypeScript: keep index coherent with disk**
+
+On every **successful** write from the extension:
+
+- **`add-note.tsx`** after save: call `index-upsert` with **body text** (decide whether to strip YAML frontmatter from indexed text — recommended: index **markdown body only** plus optional first heading as context, so frontmatter noise does not dominate).
+
+On **delete** (if `browse-notes` or future commands delete):
+
+- **`index-remove`** for that `contentId`, or schedule **full rebuild**.
+
+On **external edits** (user edited file outside Raycast):
+
+- **Out of scope v1** unless we add a **“Rebuild search index”** preference action that rescans `getAllNotes` and batch-upserts.
+
+**Phase 3 — Replace Phi retrieval in `search-notes.tsx`**
+
+Desired ladder:
+
+1. **Keyword** (unchanged).
+2. If semantic desired and **index capabilities OK**: **`index-query`** with user query; merge results with keyword hits; show **snippet** from indexer in subtitle/accessory where possible.
+3. **Fallback:** If indexer fails or returns empty / capability not initialized: keep current **`phi-search-relevance`** path (possibly widen candidate list or show toast “Limited semantic search (Phi)”).
+
+Update user-facing copy: distinguish **“Indexed”** vs **“Phi”** semantic hits if both can appear.
+
+**Phase 4 — `find-related.tsx` and post-save linking**
+
+- **Candidate generation:** Instead of blind “20 most recent”, use **`index-query`** with **selected note’s title + preview** (or full body if small) to get top-K `contentId`s, then optionally **still call `phi-related`** on that smaller, *relevant* candidate set for final JSON paths — reduces Phi cost and aligns with official “retrieve then reason” RAG pattern.
+- **§10 completion:** Implement **`related:`** frontmatter, **`note-linker.ts`**, post-save step in **`add-note.tsx`**, atomic writes per original §10; after each new note, **`index-upsert`** + linker (order: save file → upsert index → run linker so Phi sees consistent disk).
+
+**Phase 5 — Optional RAG command**
+
+- New command: user question → `index-query` → assemble snippets → **one** `phi-note`-style or new `phi-rag` bridge mode that only runs `LanguageModel` with augmented system prompt (per `docs/RAG_INFO.md`). No network.
+
+#### F. File-by-file change checklist (when implementing)
+
+| File | Changes |
+|------|---------|
+| `bridge/NpuBridge.csproj` | Package refs / TFMs if required for Search experimental API |
+| `bridge/Program.cs` | Dispatch `index-*`; capability checks; indexer lifetime (prefer **one long-lived open** per process invocation batch, not per note — MS warns open/close is expensive) |
+| `bridge/Package.appxmanifest` | Only if new capabilities required beyond `systemAIModels` (unlikely) |
+| `src/utils/run-bridge.ts` (new, copied pattern) | Centralize `execFile`, paths, parse stdout JSON |
+| `src/search-notes.tsx` | Index-first semantic tier; fallback to Phi; show capability errors |
+| `src/find-related.tsx` | Index-based candidate prefetch; optional Phi refine |
+| `src/add-note.tsx` | Post-save `index-upsert`; post-save linker (`phi-related` + frontmatter updates) per §10 |
+| `src/browse-notes.tsx` | On delete: `index-remove` or mark dirty |
+| `src/utils/note-utils.ts` | Parse/write `related:` list; helper to strip frontmatter for indexing |
+| `src/utils/note-linker.ts` (new) | Bidirectional `related:` updates, atomic rename pattern |
+| `EXTENSION_REGISTRY.md` | Note new argv modes |
+| `docs/RUNBOOK.md` | AppContentIndexer troubleshooting (policy, partial index, rebuild) |
+| `npu-notes-ext/NOTES.md` | User-facing behavior + index rebuild instruction |
+| `CHANGELOG.md` | On ship |
+
+#### G. Risk register
+
+- **Experimental API churn** — Namespace is `Experimental`; pin SDK, expect compile/runtime breaks across WAS updates.
+- **Sparse bridge + indexer** — May be unsupported or flaky; **Phase 0** de-risks.
+- **Async indexing** — Queries may hit **partial** index; show “indexing…” or debounce first query after bulk import.
+- **Duplicate storage** — Indexed text duplicates note content in Windows-managed store; privacy note in `NOTES.md`.
+- **Phi still required** for formatting in Add Note and optional RAG answer generation unless replaced.
+
+---
+
+## 11. Workspace Search (Smart Grep + Phi Assist)
+
+**Extension:** `npu-dev-toolbox-ext` (preferred) *(could be its own extension later; start in dev toolbox to keep surface area small)*  
+**New files (draft):** `src/workspace-search.tsx`, `src/utils/search/schema.ts`, `src/utils/search/rg.ts`, `src/utils/search/ranker.ts`, `bridge/Program.cs` (optional `phi-rerank` in v2)
+
+### What we want
+
+A **reliable** “search my current directory” command that works in two tiers:
+
+1. **Smart Grep (no NPU):** deterministic, fast, transparent. Always works.
+2. **Phi Assist (optional):** only used for **ranking / summarizing** already-retrieved matches (never for “deciding what to run”).
+
+This avoids the failure mode where Phi “hallucinates” flags/paths and breaks the search.
+
+---
+
+### 11a. Smart Grep Search (no NPU) — schema + algorithm
+
+#### Inputs (request schema)
+
+**TS type (authoritative)**
+
+```ts
+export type WorkspaceSearchRequest = {
+  root: string
+  query: string
+  mode: "literal" | "regex" | "auto"
+  case: "smart" | "sensitive" | "insensitive"
+  scope: {
+    includeGlobs?: string[]        // e.g. ["**/*.ts", "**/*.md"]
+    excludeGlobs?: string[]        // e.g. ["**/node_modules/**", "**/dist/**"]
+    maxFileSizeBytes?: number      // default 2_000_000
+  }
+  output: {
+    maxMatches: number             // default 200
+    maxFiles: number               // default 50
+    contextLines: number           // default 2
+  }
+}
+```
+
+#### Outputs (response schema)
+
+```ts
+export type WorkspaceSearchHit = {
+  file: string                     // absolute path
+  line: number                     // 1-based
+  column?: number                  // 1-based when available
+  preview: string                  // single line, trimmed
+}
+
+export type WorkspaceSearchResponse = {
+  status: "success" | "error"
+  message?: string
+  used: {
+    engine: "ripgrep"
+    args: string[]
+    mode: WorkspaceSearchRequest["mode"]
+  }
+  hits: WorkspaceSearchHit[]
+  truncated: boolean               // true if we hit maxMatches/maxFiles
+}
+```
+
+#### Deterministic algorithm (ripgrep)
+
+**Command shape (always the same structure; only a few switches vary):**
+
+- `rg` with JSON output for stable parsing:
+  - `rg --json --no-heading --with-filename --line-number --column`
+- Safe defaults:
+  - `--hidden` only if we decide to include dotfiles (default: off)
+  - `--max-filesize <bytes>` (default \(2MB\))
+  - `--glob` include/exclude (from request)
+  - `--smart-case` by default
+- Query mode:
+  - `literal`: pass `--fixed-string`
+  - `regex`: pass `--regexp`
+  - `auto`: if query contains obvious regex metacharacters (`[](){}|.+*?^$\\`) treat as regex, else fixed-string
+
+**Parsing:** consume `rg --json` stream, collect only `type:"match"` events, then cap:
+
+- stop after `maxMatches`
+- stop after `maxFiles` distinct files (optional)
+
+**Ranking (no NPU):**
+
+- prefer exact matches in title-ish areas (filenames, first lines)
+- prefer more occurrences in fewer files
+- prefer closer together matches (dense clusters)
+
+**UI behavior (Raycast):**
+
+- List grouped by file
+- show line + preview
+- actions: open file at line (if supported), copy preview, copy file path, open folder
+
+---
+
+### 11b. NPU-assisted Workspace Search — reliable, simple, non-hallucinatory
+
+#### Two candidate designs
+
+**Option A — Phi generates `rg` commands from English**
+- Pros: feels “magical”
+- Cons: unreliable; hallucinated flags/paths/globs can break searches or leak outside root. Hard to sandbox.
+
+**Option B — Deterministic retrieval, Phi reranks/summarizes**
+- Pros: reliable, debuggable, safe. Phi never chooses what files to touch.
+- Cons: less “agentic,” but still powerful.
+
+**Decision:** **Choose Option B** for v1. It is the simplest approach that stays robust.
+
+#### v1 flow (Option B)
+
+1. **Detect active workspace** (reuse dev toolbox `detectActiveWorkspace` logic).
+2. Run **Smart Grep** (11a) with conservative defaults.
+3. If results are already good (e.g. \(\ge 10\) hits), stop.
+4. If results are sparse or broad, run a second deterministic pass:
+   - widen include globs (e.g. include `*.md`, `*.json`, `*.ts`, `*.tsx`)
+   - add context lines
+   - raise maxMatches modestly
+5. **Optional Phi step** (only if user asks for “best answer” or results are large):
+   - Build a compact payload: query + top N hits (file, line, preview).
+   - Ask Phi to output a small JSON shape:
+
+```json
+{ "top": [{ "file": "...", "line": 123, "reason": "..." }], "suggestedNextQuery": "..." }
+```
+
+**Rules:** Phi may only refer to candidates provided. It cannot invent file paths or lines; TS validates and drops unknowns.
+
+#### v2 (optional): bridge-side batching
+
+If TS-side rerank is too slow, add bridge `phi-rerank` to batch 20–40 hits in one call (still small context). The contract remains “ranking only.”
+
+---
+
+### Reliability constraints (must-haves)
+
+- **Root sandbox:** never search outside the resolved root folder.
+- **No command generation in v1:** Phi does not produce shell commands or `rg` flags.
+- **Strict schemas:** every Phi response is JSON-only with validation.
+- **Context budgeting:** candidate previews are single-line + truncated; cap N.
+- **Failure mode:** if Phi fails, the command still succeeds with Smart Grep results.
+
+---
+
+## 12. Global hotkey text rewrite (selection in-place, no Raycast HUD)
+
+**Extension:** `npu-text-tools-ext` (extends the shipped §3 commands — same bridge, new companion process + Raycast management UI)  
+**Authoritative Microsoft doc in-repo:** `docs/REWRITE_INFO.md` (Phi Silica, `LanguageModel` readiness, **Text Intelligence Skills** — `TextSummarizer`, **Rewrite** / `TextRewriter`)  
+**Status:** Planned (not implemented).
+
+### Problem statement
+
+Users want **one shortcut** (e.g. a chord like **Alt+Win+G**) that, while text is **selected in any app**, **rewrites that selection in place** — without opening Raycast, pasting into a form, or copying the result manually. They also want **multiple shortcuts** bound to **different rewrite presets** (grammar vs simplify vs custom instructions), managed like **user-defined profiles**, not six fixed OS-wide shortcuts hardcoded in C#.
+
+Today (§3), every flow goes through a **Raycast command**: clipboard prefill is convenient but still **requires Raycast as the front-end**. Raycast does **not** provide a supported way to run extension code on **global OS hotkeys while Raycast is backgrounded or quit**; command hotkeys only fire when the user invokes Raycast first. So the suite needs a **small Windows companion** (same pattern family as `npu-awake-ext/keeper/`) that owns **global hotkeys** and **delegates rewriting** to the existing **`NpuBridge.exe phi-rewrite`** pipeline.
+
+### Goals
+
+1. **Global hotkey → rewrite selected text → replace selection** in the active application, on-device only (no network).
+2. **User-authored preset list:** each preset picks a **rewrite kind** (built-in mode and/or custom instruction) and binds to **one global hotkey** (user configurable; sensible defaults documented).
+3. **Easy management:** install/start helper, edit presets, detect conflicts, test a preset, open logs — preferably from **Raycast commands** so the extension remains the “control panel.”
+4. **Behavior matches official Windows AI patterns** in `docs/REWRITE_INFO.md` (readiness, skill APIs) — see **API alignment** below.
+
+### Non-goals (v1)
+
+- Rewriting **without** using the clipboard as part of the capture/paste shim (see risks — alternatives are much heavier).
+- **macOS** (suite target is Windows Copilot+ / sparse bridges).
+- **Per-app profiles** or **context-aware** target detection beyond “whatever window has focus.”
+
+### Official API alignment (`docs/REWRITE_INFO.md`) vs current bridge
+
+| Topic | Microsoft guidance (`docs/REWRITE_INFO.md`) | `npu-text-tools-ext` today (§3) | Planned direction |
+|-------|---------------------------------------------|----------------------------------|-------------------|
+| Model readiness | `LanguageModel.GetReadyState()`; if `NotReady`, `await LanguageModel.EnsureReadyAsync()` | Same pattern in `bridge/Program.cs` | **Unchanged** — helper calls the same bridge; no duplicate WinRT session in the helper for v1. |
+| **Rewrite** skill | **Text Intelligence Skills:** instantiate skill object with `LanguageModel`, call async skill method. Doc sample: `TextRewriter` + `RewriteAsync` (imports include `Microsoft.Windows.AI.Text.Experimental` in the captured snippet). | Uses **`LanguageModel.CreateContext(systemPrompt)`** + **`GenerateResponseAsync(context, userText, ...)`** for all modes (including grammar/bullets where `TextRewriteTone` does not map). | **Refactor bridge in the same PR or a prerequisite PR:** For modes that are pure “rewrite clarity/readability/tone,” prefer **`TextRewriter`** per Microsoft’s **Rewrite** skill when the installed Windows App SDK / projection exposes a stable overload that matches our intent (verify against the WinMD for the same package line as the bridge — `2.0.0-experimental4` today). For **grammar**, **bullets**, and **custom instruction**, either (a) keep **`LanguageModel` + context** if `TextRewriter` cannot express the constraint, or (b) add **documented** `TextRewriterOptions`/tone only when the API supports it. **Custom presets** (user instruction string) likely remain **`LanguageModel`**-based for reliable instruction-following (same as current `custom` mode). |
+| **Summarize** skill | `TextSummarizer` + `SummarizeAsync` | Not exposed as a Raycast command today | **Optional preset kind** in v1.1+ (“Summarize selection”) once bridge adds a mode or `phi-rewrite` sibling argv — aligns with the same doc. |
+| Content moderation | Example sets `ContentFilterOptions` on `LanguageModelOptions` | Not set today | **Optional:** mirror doc defaults for hotkey path if we expose moderation knobs later; v1 can stay parity with current bridge. |
+
+**Rule:** After any bridge change, **`docs/REWRITE_INFO.md`** remains the **normative** API reference; update `bridge/Program.cs` comments to cite the skill used (`TextRewriter` vs `LanguageModel`) per mode.
+
+### Architecture (suite conventions–compliant)
+
+**Components**
+
+1. **Existing sparse bridge** — `npu-text-tools-ext/assets/bin/NpuBridge.exe` + `NpuTextToolsBridge.Identity`. **No second identity** for v1 if the helper only **spawns** this exe with the same argv contract as TypeScript (`phi-rewrite <mode> <tempFile>`). **`cwd` must be** `path.dirname(NpuBridge.exe)` (same as `TextRewriteCommand.tsx`).
+2. **New companion:** `npu-text-tools-ext/hotkey-helper/` (name finalizable) — e.g. **`TextHotkeyHelper.exe`** published to **`npu-text-tools-ext/assets/bin/`** alongside `NpuBridge.exe`. Pattern: **`npu-awake-ext/keeper/`** — plain **.NET 8** **WinExe**, **full-trust**, **no** Raycast runtime. It:
+   - Loads **`presets.json`** from a fixed user location (recommended: `%LocalAppData%\NpuTextTools\presets.json` — **not** inside Raycast’s extension bundle, so edits survive extension updates).
+   - Registers **Windows `RegisterHotKey`** (or low-level hook only if unavoidable — prefer `RegisterHotKey` for simplicity) for each preset.
+   - On hotkey: run the **selection replace pipeline** (below).
+   - Optional **notify icon** for “running”, “failed”, “open config”, exit.
+3. **Raycast extension** — new commands + preferences to **edit presets**, **install/start/stop helper**, **open config folder**, **validate hotkey conflicts**, and **copy default presets** on first run.
+
+**CONTRIBUTING.md constraints**
+
+- **No shared npm package** with other extensions; helper is **only** under `npu-text-tools-ext/`.
+- **One extension folder = one installable unit**; ship helper exe inside **`assets/bin/`** with the extension so Store/manual installs stay coherent.
+- **`register-bridge.ps1`:** only if a **new** sparse package is added — **not required** for v1 if helper is vanilla Win32/.NET and does not call WinRT directly.
+
+### Selection capture and paste-back (UX-critical)
+
+**Recommended v1 algorithm (clipboard shim)**
+
+1. **Snapshot clipboard** (at least **Unicode text**; ideally use Win32 API to duplicate text format and common formats if feasible — minimum viable: save previous text string).
+2. **Synthesize Ctrl+C** to the foreground window (`SendInput`) so the selection is copied.
+3. **Wait** a bounded time (debounce **50–200 ms**, app-dependent) and **read clipboard text**.
+4. If clipboard is **empty or unchanged** from a “no selection” heuristic → **abort**: restore clipboard, show **tray balloon** or **toast-like notification** (“No text captured — select text and try again.”).
+5. Write captured text to a **temp file**; **`Process.Start`** `NpuBridge.exe phi-rewrite <mode> <temp>` (or write JSON temp for `custom` / preset-defined instruction — bridge contract may need **`preset`** argv that maps to instruction in file — see below).
+6. **Parse one-line JSON stdout** `{ "status", "result"? , "message"? }` — identical contract to Raycast path.
+7. On success: put **`result`** on clipboard; **synthesize Ctrl+V**; after short delay, **restore** original clipboard snapshot (user expectation: clipboard looks as before, except selection was replaced — document that perfect restoration of rich clipboard is v1 **text-only**).
+8. On failure: restore clipboard; notify user with stderr tail / message.
+
+**UX safeguards**
+
+- **Busy flag:** ignore overlapping hotkey triggers while a rewrite is in flight (prevent double paste).
+- **Timeout** on bridge process (e.g. 2–5 minutes max; Phi first run can be slow).
+- **Size cap:** if selection exceeds **N** characters (configurable, default aligned with model context limits), refuse with clear message.
+
+**Known limitations (must be documented in `NOTES.md`)**
+
+- Apps that **block clipboard** or use **nonstandard selection** may fail.
+- **Remote desktop / elevated** apps may need UAC-aware notes (helper runs as user).
+- **Win+Alt+** chords can overlap **Windows 11** system shortcuts — preset wizard should **warn** and suggest alternatives.
+
+### Preset configuration (data model)
+
+**File:** `%LocalAppData%\NpuTextTools\presets.json` (versioned schema).
+
+**Suggested shape (illustrative — finalize in implementation):**
+
+- **`schemaVersion`**
+- **`presets[]`:**
+  - **`id`** (stable string)
+  - **`label`** (for Raycast UI)
+  - **`hotkey`:** modifiers array + **virtual key** (store as string token + VK enum int — avoid locale issues)
+  - **`rewrite`:**
+    - **`kind`:** `"builtin"` → **`mode`** one of `grammar | formal | concise | bullets | simplify` (must match `phi-rewrite` argv)
+    - **or** `"custom"` → **`instruction`** string (maps to current `custom` JSON temp payload)
+    - **or** (later) **`"summarize"`** when bridge supports `TextSummarizer`
+- **`helperOptions`:** `runAtLogin`, `showTrayIcon`, `clipboardRestoreDelayMs`, `maxChars`, …
+
+**Raycast responsibilities**
+
+- **Validate** JSON on save (schema in TS or Zod-style manual checks — **no new shared package**; inline or single file in extension).
+- **Detect duplicate hotkeys** across presets before writing.
+- **Export / import** preset files (optional v1.1).
+
+### Bridge contract extensions (if needed)
+
+**Option A (minimal):** Presets only use existing **`phi-rewrite`** modes; custom presets use **`custom`** with temp JSON — no argv change.
+
+**Option B (cleaner for config):** Add **`phi-rewrite-preset <tempFile>`** where temp JSON is `{ "builtinMode"?: "...", "instruction"?: "...", "text": "..." }` so the helper does not branch on file shape — **one** code path in `Program.cs`. Prefer **Option B** if it reduces helper duplication.
+
+Either way: **stdout remains one JSON line**; **`cwd`** rule unchanged; update **`EXTENSION_REGISTRY.md`** IPC column when argv changes.
+
+### Raycast UX structure (easiest path for users)
+
+**Onboarding (first run)**
+
+1. User installs **NPU Text Tools** in Raycast.
+2. Command **“Text Hotkeys — Setup”** (or similar): explains helper, **“Install & Start Helper”** (copies nothing if exe already in `assets/bin` — just starts it), **“Open Presets”** opens JSON or a **Form** editor.
+3. Offer **“Generate default presets”** — maps 1:1 to current six §3 modes with **suggested** hotkeys that **avoid** common OS chords; user must confirm each binding (OS may reserve keys).
+
+**Day-to-day**
+
+- **Tray icon (optional):** “Reload presets”, “Open Raycast extension”, “Quit helper.”
+- **No Raycast required** for rewrite once helper runs.
+
+**Power users**
+
+- Direct edit of `presets.json` + **Reload** from tray or Raycast command.
+
+**Failure UX**
+
+- Match **§ Suite UX conventions** where Raycast is involved; tray notifications use **plain ASCII**, short Title Case titles, **no emoji** (parity with toast rules).
+
+### Implementation phases
+
+| Phase | Deliverable |
+|-------|-------------|
+| **0** | **Spike:** `hotkey-helper` exe: one hardcoded hotkey → Ctrl+C → read clipboard → call `NpuBridge.exe` → Ctrl+V → restore clipboard. Prove reliability in Notepad, Word, Edge. |
+| **1** | **Preset load** from `%LocalAppData%`; `RegisterHotKey` for N presets; reload on file change or tray command. |
+| **2** | **Raycast commands:** setup wizard, preset editor (Form or JSON), start/stop helper (spawn/kill process with safe UX), open folder. |
+| **3** | **Bridge alignment:** introduce **`TextRewriter`** for applicable builtin modes per `docs/REWRITE_INFO.md`; keep `LanguageModel` for custom; add tests/manual checklist. |
+| **4** | **Polish:** login task / Startup shortcut installer optional; summarize preset; telemetry-free logging file for support. |
+
+### Files and registry (when implementing)
+
+| Location | Change |
+|----------|--------|
+| `npu-text-tools-ext/hotkey-helper/*.csproj` | New WinExe, `net8.0-windows`, optional `UseWindowsForms` for tray icon |
+| `npu-text-tools-ext/assets/bin/` | Ship `TextHotkeyHelper.exe` next to `NpuBridge.exe` |
+| `npu-text-tools-ext/src/*.tsx` | New commands: setup, preset editor |
+| `npu-text-tools-ext/package.json` | New command entries + preferences (`helperAutoStart`, paths optional) |
+| `npu-text-tools-ext/bridge/Program.cs` | Optional argv unify; `TextRewriter` integration |
+| `EXTENSION_REGISTRY.md` | Note helper binary + any new bridge argv |
+| `npu-text-tools-ext/NOTES.md` | Clipboard shim limits, conflicts, admin edge cases |
+| `docs/RUNBOOK.md` | Helper startup, debugging “no selection captured” |
+| `CHANGELOG.md` | User-facing summary |
+
+### Relationship to § Cleanup follow-ups (“Keyboard shortcuts audit”)
+
+- **Action-level shortcuts inside Raycast** (List actions, etc.) remain separate.
+- **§12** is the **global OS hotkey** story for text tools; update the cleanup bullet to reference this section when marking progress.
 
 ---
 
@@ -962,6 +1433,38 @@ The script writes a JSON report to `scripts/audit-toasts.report.json` (gitignore
 ### Cleanup follow-ups
 
 > **Status legend:** ✅ done · 🔲 open. When you mark something done, add the date and a one-line "what changed" note; do **not** delete completed entries (history matters).
+
+- 🔲 **Suite preferences audit (all extensions)** *(added 2026-05-08)*.
+  - **Goal:** expose Raycast preferences wherever a reasonable user might want control, without cluttering the UI.
+  - **Decision rule:** add a preference when it changes behavior that:
+    - is subjective (e.g., “prefill from clipboard”, “auto-open output files”)
+    - is environment-specific (paths, IDE/terminal choice, default folders)
+    - trades speed vs quality (semantic search debounce, max matches, “auto-run semantic” toggle)
+    - is potentially destructive or noisy (auto-open windows, auto-delete intermediates, confirmations)
+  - **Process:**
+    - For each extension, list current prefs and identify missing knobs.
+    - Add prefs in `package.json` with clear **title/description/label** and sensible defaults.
+    - Update the command UI copy to reflect prefs (no “mystery behavior”).
+    - Run `ray lint` + `ray build` per touched extension.
+  - **Suggested initial targets:**
+    - `npu-notes-ext`: semantic search debounce, max semantic checks, max semantic hits, show/hide success toasts.
+    - `npu-image-editor-ext`: default behaviors that open files/windows; any “auto-*” flows.
+    - `npu-awake-ext`: default durations, schedule defaults, disclaimer toggles.
+    - `npu-dev-toolbox-ext`: already has many prefs; audit for missing ones around detection fallbacks/timeouts.
+
+- 🔲 **Keyboard shortcuts audit (action-level inside lists + command-level hotkeys)** *(added 2026-05-08)*.
+  - **Goal:** make common flows fast without making users memorize obscure bindings.
+  - **Global OS hotkeys (outside Raycast):** **`FEATURE_PLAN.md` §12** — `npu-text-tools-ext` **global rewrite** companion + `presets.json`; not the same as Raycast command hotkeys.
+  - **What we can set in code (reliable):** `Action` shortcuts inside commands (e.g., Delete Note in Browse Notes).
+  - **What we should not hardcode (Raycast-level):** command hotkeys are user-configurable in Raycast; document recommended hotkeys, but don’t attempt to enforce them in `package.json`.
+  - **Process:**
+    - For each list-based command, ensure:
+      - primary action is Enter (Raycast default)
+      - destructive actions get an explicit shortcut (e.g., Delete = `ctrl+d` or `cmd+backspace`, whichever feels consistent on Windows)
+      - confirmations exist for destructive actions
+    - Add a short “Recommended Hotkeys” note in each extension’s `NOTES.md` if it helps onboarding.
+  - **Concrete example (desired UX):**
+    - `npu-notes-ext/browse-notes`: Delete Note should be doable from keyboard with a one-step shortcut + confirm.
 
 - ✅ **WebP encoder / wasm asset wiring** *(done 2026-05-08)*. Inline `ensureWebpEncodeInit` moved to `npu-image-editor-ext/src/utils/webp-encoder.ts` (now exposes `encodeRgbaToWebp`). Missing wasms now copied at build time by `scripts/copy-wasm.mjs`, wired as `prebuild` and `predev` in `package.json`. `assets/webp/` and `*.wasm` added to root `.gitignore`.
 - ✅ **`runNpuCommand` extracted** *(done 2026-05-08)*. Moved to `npu-image-editor-ext/src/utils/run-npu-command.ts` (returns `{ ok, result } | { ok, error }`, never throws — matches the "Error handling rules" in § Suite UX conventions). `modify-image.tsx`, `super-resolution.tsx`, and `extract-text.tsx` all use it. `make-sticker.tsx` (when written) should use the same helper.

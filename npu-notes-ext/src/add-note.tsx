@@ -1,4 +1,15 @@
-import { Form, ActionPanel, Action, showToast, Toast, environment, Clipboard, Icon, open } from "@raycast/api"
+import {
+    Form,
+    ActionPanel,
+    Action,
+    showToast,
+    Toast,
+    environment,
+    Clipboard,
+    Icon,
+    open,
+    getPreferenceValues,
+} from "@raycast/api"
 import { useEffect, useState } from "react"
 import { execFile } from "child_process"
 import { promisify } from "util"
@@ -14,15 +25,26 @@ const BRIDGE_BIN_DIR = path.join(environment.assetsPath, "bin")
 const BRIDGE_MANIFEST_SOURCE = path.join(environment.assetsPath, "..", "bridge", "Package.appxmanifest")
 const BRIDGE_IDENTITY = "NpuNotesBridge.Identity"
 
+interface Preferences {
+    prefillFromClipboard?: boolean
+}
+
 interface FormValues {
     note: string
 }
 
 export default function Command() {
+    const prefs = getPreferenceValues<Preferences>()
     const [isLoadingClipboard, setIsLoadingClipboard] = useState(true)
     const [defaultNote, setDefaultNote] = useState("")
 
     useEffect(() => {
+        if (!prefs.prefillFromClipboard) {
+            setDefaultNote("")
+            setIsLoadingClipboard(false)
+            return
+        }
+
         Clipboard.readText()
             .then(text => setDefaultNote(text ?? ""))
             .catch(() => setDefaultNote(""))
@@ -66,11 +88,19 @@ export default function Command() {
                 manifestSourcePath: BRIDGE_MANIFEST_SOURCE,
             })
 
-            const { stdout } = await execFileAsync(BRIDGE_PATH, ["phi-note", tempFile], {
-                cwd: path.dirname(BRIDGE_PATH),
-                windowsHide: true,
-                maxBuffer: 10 * 1024 * 1024,
-            })
+            let stdout = ""
+            try {
+                const result = await execFileAsync(BRIDGE_PATH, ["phi-note", tempFile], {
+                    cwd: path.dirname(BRIDGE_PATH),
+                    windowsHide: true,
+                    maxBuffer: 10 * 1024 * 1024,
+                })
+                stdout = result.stdout
+            } catch (err: unknown) {
+                const e = err as { stdout?: string; stderr?: string; message?: string }
+                stdout = e.stdout ?? ""
+                if (!stdout.trim()) throw new Error(e.stderr?.trim() || e.message || "Bridge failed.")
+            }
 
             const parsed = JSON.parse(stdout.trim())
             if (parsed.status !== "success") throw new Error(parsed.message ?? "Unknown bridge error")

@@ -20,9 +20,33 @@ export type IdeChoice =
 export type LauncherPrefs = {
     terminalChoice: TerminalChoice
     terminalNewTab: boolean
+    wtProfileName: string
     terminalCustomPath: string
     ideChoice: IdeChoice
     ideCustomPath: string
+}
+
+function tryGetWindowsTerminalDefaultProfileGuid(): string | null {
+    // Windows Terminal stable Store package (most common on Win11).
+    // We deliberately avoid invoking `wt` because it can show GUI dialogs on bad args.
+    try {
+        const localAppData = process.env.LOCALAPPDATA
+        if (!localAppData) return null
+        const settingsPath = path.join(
+            localAppData,
+            "Packages",
+            "Microsoft.WindowsTerminal_8wekyb3d8bbwe",
+            "LocalState",
+            "settings.json",
+        )
+        if (!fs.existsSync(settingsPath)) return null
+        const raw = fs.readFileSync(settingsPath, "utf8")
+        const parsed = JSON.parse(raw) as { defaultProfile?: string }
+        const guid = parsed.defaultProfile?.trim()
+        return guid ? guid : null
+    } catch {
+        return null
+    }
 }
 
 function ensureDirectory(folderPath: string): LauncherOutcome {
@@ -42,13 +66,24 @@ function ensureFile(filePath: string, label: string): LauncherOutcome {
     return { ok: true }
 }
 
+function ensureCommandOrPath(commandOrPath: string, label: string): LauncherOutcome {
+    if (!commandOrPath) return { ok: false, error: `${label} is empty. Set a path in extension preferences.` }
+    // If it looks like a path, verify it exists. Otherwise treat it as a PATH command.
+    if (path.isAbsolute(commandOrPath) || commandOrPath.includes("\\") || commandOrPath.includes("/")) {
+        return ensureFile(commandOrPath, label)
+    }
+    if (!commandExistsOnPath(commandOrPath)) return { ok: false, error: `${label} not found on PATH: ${commandOrPath}` }
+    return { ok: true }
+}
+
 function fireAndForget(command: string, args: string[], cwd?: string): LauncherOutcome {
     try {
         const child = spawn(command, args, {
             cwd,
             detached: true,
             stdio: "ignore",
-            windowsHide: false,
+            // Avoid flashing a console window (notably when launching via `cmd.exe /c start ...`).
+            windowsHide: true,
         })
         child.on("error", err => console.error(`[launchers] spawn error for ${command}:`, err))
         child.unref()
@@ -81,10 +116,54 @@ export function openInTerminal(folderPath: string, prefs: LauncherPrefs): Launch
 
     switch (prefs.terminalChoice) {
         case "wt": {
-            const args = prefs.terminalNewTab ? ["-w", "0", "-d", folderPath] : ["-d", folderPath]
-            return fireAndForget("wt.exe", args)
+            // Prefer the App Execution Alias (`%LOCALAPPDATA%\Microsoft\WindowsApps\wt.exe`) because it matches
+            // what the Start Menu uses and avoids accidentally invoking a different `wt.exe` on PATH
+            // (e.g. Terminal Preview vs Stable) with different settings/default profile.
+            const wtAlias = path.join(process.env.LOCALAPPDATA ?? "", "Microsoft", "WindowsApps", "wt.exe")
+            const wtCommand =
+                process.env.LOCALAPPDATA && fs.existsSync(wtAlias)
+                    ? wtAlias
+                    : commandExistsOnPath("wt.exe") || commandExistsOnPath("wt")
+                      ? "wt.exe"
+                      : wtAlias
+
+            const check = ensureCommandOrPath(wtCommand, "Windows Terminal (wt)")
+            if (!check.ok) {
+                return {
+                    ok: false,
+                    error: "Windows Terminal (wt) not found. Install Windows Terminal or switch the Terminal preference to PowerShell/cmd.",
+                }
+            }
+
+            // Match common user expectations:
+            // - Default: open a NEW window (`-w new`) so behavior matches Start Menu / typical hotkey scripts.
+            // - Optional: open a new tab in an existing window (`-w 0`) when the preference is enabled.
+            //
+            // `-d/--startingDirectory` is an option on the `new-tab` subcommand. Use the explicit form so
+            // the working directory is applied reliably across Windows Terminal versions.
+            //
+            // Use the user's Windows Terminal default profile, but pass it explicitly to avoid cases where
+            // `wt new-tab` falls back to a different profile (e.g. cmd) despite Settings being configured.
+            const windowArgs = prefs.terminalNewTab ? ["-w", "0"] : ["-w", "new"]
+            const explicitProfile =
+                prefs.wtProfileName?.trim() ||
+                // Fall back to the configured default profile GUID when no preference is set.
+                tryGetWindowsTerminalDefaultProfileGuid() ||
+                ""
+            const profileArgs = explicitProfile ? ["-p", explicitProfile] : []
+            // `-p` is a `new-tab` option; place it after the subcommand so it is not ignored.
+            const args = [...windowArgs, "new-tab", ...profileArgs, "-d", folderPath]
+
+            // Launch Windows Terminal directly (not via `cmd.exe start`) to avoid inheriting legacy console behavior.
+            return fireAndForget(wtCommand, args, folderPath)
         }
         case "pwsh":
+            if (!commandExistsOnPath("pwsh.exe")) {
+                return {
+                    ok: false,
+                    error: "PowerShell 7 (pwsh) not found on PATH. Install it or switch Terminal preference.",
+                }
+            }
             return fireAndForget("pwsh.exe", [
                 "-NoExit",
                 "-Command",
