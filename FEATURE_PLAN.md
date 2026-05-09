@@ -121,7 +121,7 @@ These files needed updating before the respective extensions could run in `npm r
 
 > **Status (2026-05-07):** Items **#1 Super Resolution**, **#2 OCR**, **#3 Phi-Silica Text Tools**, and **#4 Smart Note Taker** are implemented. **#5 Awake** is currently being redesigned as **Smart Awake** to incorporate NPU-powered natural language schedule parsing. Next up after the redesign is **#6 Sticker Maker**. Items **#9** and **#10** are new additions to the roadmap. The PENDING `package.json` section below remains historical reference.
 
-> **Status update (2026-05-08):** **#5 Smart Awake** has shipped (Phi intent extractor + persistent schedules + keeper daemon — see `npu-awake-ext/`). **#6 Sticker Maker (basic)** has shipped. **#7 Sticker Maker (manual focus)** and **#8 Search Notes** are deferred. **#9 NPU Dev Toolbox** is being implemented now with an expanded v1 scope: commit-message generation **plus** an Open Workspace command (open chosen folder in Explorer, a configurable terminal, and a configurable IDE).
+> **Status update (2026-05-08):** **#5 Smart Awake** has shipped. **#6 Sticker Maker (basic)** has shipped. **#9 NPU Dev Toolbox** (Commit Message + Open Workspace) has shipped. **Workspace detection in Dev Toolbox was significantly improved** to scan all open Explorer windows and prioritize Git repositories, solving the "detection block" issue when non-workspace folders are focused.
 
 ---
 

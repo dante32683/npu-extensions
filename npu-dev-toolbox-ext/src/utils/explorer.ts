@@ -110,3 +110,43 @@ export async function getAnyExplorerPath(): Promise<string | null> {
         return null
     }
 }
+
+// Reads the paths of all open Windows Explorer windows.
+const SCRIPT_GET_ALL_EXPLORER = `
+$ErrorActionPreference = 'SilentlyContinue'
+$shell = New-Object -ComObject Shell.Application
+$paths = @()
+foreach ($w in $shell.Windows()) {
+    try {
+        $name = $w.Name
+        if ($name -eq 'File Explorer' -or $name -eq 'Windows Explorer') {
+            $url = $w.LocationURL
+            if ($url) {
+                Add-Type -AssemblyName System.Web
+                $local = (New-Object System.Uri($url)).LocalPath
+                if (Test-Path -LiteralPath $local) { $paths += $local }
+            }
+        }
+    } catch {}
+}
+$paths | ConvertTo-Json -Compress
+`
+
+export async function getAllExplorerPaths(): Promise<string[]> {
+    try {
+        const { stdout } = await execFileAsync(
+            "powershell.exe",
+            ["-NoProfile", "-NonInteractive", "-Command", SCRIPT_GET_ALL_EXPLORER],
+            { windowsHide: true },
+        )
+        const json = stdout.trim()
+        if (!json) return []
+        const parsed = JSON.parse(json)
+        if (Array.isArray(parsed)) return parsed
+        if (typeof parsed === "string") return [parsed]
+        return []
+    } catch (error) {
+        console.error("[explorer] getAllExplorerPaths failed:", error)
+        return []
+    }
+}

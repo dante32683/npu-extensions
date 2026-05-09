@@ -4,7 +4,7 @@ import fs from "fs"
 import path from "path"
 import os from "os"
 import { runDevBridge } from "./run-bridge"
-import { getForegroundExplorerPath } from "./explorer"
+import { getForegroundExplorerPath, getAllExplorerPaths } from "./explorer"
 
 const execFileAsync = promisify(execFile)
 
@@ -280,37 +280,79 @@ async function detectFromExplorer(proc: ForegroundProc): Promise<DetectedContext
     return null
 }
 
-// Tries each detection method in order, short-circuiting on the first hit.
-// Each method is wrapped in try/catch and returns null on failure — never throws.
+/**
+ * Returns a list of potential workspace candidate paths from all open windows.
+ */
+async function detectPotentialWorkspaces(): Promise<DetectedContext[]> {
+    const candidates: DetectedContext[] = []
+
+    // 1. Foreground window (highest priority)
+    const proc = await getForegroundProcess()
+    if (proc) {
+        try {
+            const ide = await detectFromIde(proc)
+            if (ide) candidates.push(ide)
+            const term = await detectFromTerminal(proc)
+            if (term) candidates.push(term)
+            const explorer = await detectFromExplorer(proc)
+            if (explorer) candidates.push(explorer)
+        } catch (e) {
+            console.error("[foreground-context] foreground detection failed:", e)
+        }
+    }
+
+    // 2. All open Explorer windows
+    try {
+        const explorerPaths = await getAllExplorerPaths()
+        for (const p of explorerPaths) {
+            // Don't duplicate foreground explorer if it's already there
+            if (!candidates.some(c => c.cwd.toLowerCase() === p.toLowerCase())) {
+                candidates.push({ cwd: p, source: "explorer" })
+            }
+        }
+    } catch (e) {
+        console.error("[foreground-context] getAllExplorerPaths failed:", e)
+    }
+
+    return candidates
+}
+
+async function isGitRepo(dir: string): Promise<boolean> {
+    try {
+        const { stdout } = await execFileAsync("git", ["rev-parse", "--is-inside-work-tree"], {
+            cwd: dir,
+            windowsHide: true,
+        })
+        return stdout.trim() === "true"
+    } catch {
+        return false
+    }
+}
+
+/**
+ * Tries each detection method in order, short-circuiting on the first hit
+ * that is actually a Git repository.
+ */
 export async function detectActiveWorkspace(arg?: string): Promise<DetectedContext | null> {
+    // Priority 1: Argument
     if (arg && arg.trim().length > 0) {
         const expanded = arg.replace(/^~(?=$|\/|\\)/, os.homedir())
         const resolved = path.resolve(expanded)
         if (isDirectory(resolved)) return { cwd: resolved, source: "argument" }
     }
 
-    const proc = await getForegroundProcess()
-    if (!proc) return null
-
-    try {
-        const ide = await detectFromIde(proc)
-        if (ide) return ide
-    } catch (e) {
-        console.error("[foreground-context] detectFromIde threw (ignored):", e)
+    // Priority 2: Candidates from all open windows, filtered for Git repos
+    const candidates = await detectPotentialWorkspaces()
+    for (const cand of candidates) {
+        if (await isGitRepo(cand.cwd)) {
+            return cand
+        }
     }
 
-    try {
-        const term = await detectFromTerminal(proc)
-        if (term) return term
-    } catch (e) {
-        console.error("[foreground-context] detectFromTerminal threw (ignored):", e)
-    }
-
-    try {
-        const explorer = await detectFromExplorer(proc)
-        if (explorer) return explorer
-    } catch (e) {
-        console.error("[foreground-context] detectFromExplorer threw (ignored):", e)
+    // Priority 3: Last active IDE folder (fallback if no Git repo open)
+    // This is essentially what we had before if nothing was a git repo.
+    if (candidates.length > 0) {
+        return candidates[0]
     }
 
     return null

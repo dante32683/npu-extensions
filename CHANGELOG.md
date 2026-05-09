@@ -21,6 +21,7 @@ All notable changes to this suite are documented here. The format follows [Keep 
 - **Notes UX (`npu-notes-ext`)**: `Add Note` clipboard prefill is now optional via preference (disabled by default).
 - **Notes UX (`npu-notes-ext`)**: `Browse Notes` can delete notes with `Ctrl+D` (moves to Recycle Bin).
 - **Dev Toolbox (`npu-dev-toolbox-ext`)**: Fixed Windows Terminal (`wt`) launching quirks (PATH/alias detection, `new-tab -d` arg placement, optional profile selection).
+- **Dev Toolbox (`npu-dev-toolbox-ext`)**: Improved workspace detection for "Commit Message" to scan all open Explorer windows and prioritize Git repositories, preventing unrelated focused folders from blocking detection.
 
 ## Historical summary (pre-hub; see FEATURE_PLAN.md for detail)
 
