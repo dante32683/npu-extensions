@@ -34,7 +34,11 @@ async function removePackage(identityName: string): Promise<void> {
     try {
         await execFileAsync(
             "powershell.exe",
-            ["-NoProfile", "-Command", `Remove-AppxPackage -Package (Get-AppxPackage -Name '${identityName}').PackageFullName -ErrorAction SilentlyContinue`],
+            [
+                "-NoProfile",
+                "-Command",
+                `Remove-AppxPackage -Package (Get-AppxPackage -Name '${identityName}').PackageFullName -ErrorAction SilentlyContinue`,
+            ],
             { windowsHide: true },
         )
     } catch {

@@ -8,6 +8,7 @@ All notable changes to this suite are documented here. The format follows [Keep 
 
 ### Added
 
+- **NPU Text Tools (`npu-text-tools-ext`):** **Paste Selection** (`no-view`) and **Review Selection** (`view`) commands per rewrite mode; Raycast global hotkeys target these for in-place rewrite. `TextSelectionHelper.exe` (`send-copy` / `send-paste`) plus sentinel-based clipboard capture; paste uses `Clipboard.paste` after `closeMainWindow`. New prefs: **Quick custom instruction**, **Selection copy delay**. Shared `phi-rewrite-bridge` module; see `selection-helper/README.md` to publish the helper.
 - **Suite (roadmap §1)** — Cohesive Raycast **preferences** across all five extensions: success toasts, optional **Ensure AI model readiness** (`--ensure-ready` on Phi/imaging bridges), notes semantic search tuning (debounce, max checks/hits), image editor auto-open + OCR text open, awake default duration/until time + Smart Awake schedule fallbacks, dev toolbox **workspace detection timeout** for PowerShell foreground probes. Bridge headers document readiness + link `docs/REWRITE_INFO.md`.
 - **NPU Image Editor**: `Remove Background` command now runs the real NPU pipeline (same as Modify Image) instead of a placeholder scaffold.
 - **NPU Awake (`npu-awake-ext`)**: Keyboard-first sleep prevention. Supports indefinite toggle, timed duration, "awake until" specific clock time, and screen-off mode. **Note: Currently being upgraded to "Smart Awake" with NPU natural language parsing.**
@@ -18,6 +19,9 @@ All notable changes to this suite are documented here. The format follows [Keep 
 - Documentation hub: `CONTRIBUTING.md`, `docs/RUNBOOK.md`, per-extension `NOTES.md`, and root stub files `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` pointing at the same workflow.
 
 ### Fixed
+
+- **NPU Text Tools:** **Core fix:** helper no longer sends **Ctrl+C/Ctrl+V** after the focus poll times out while Raycast is still foreground (that always copied nothing). It now **returns exit 2** with a clear stderr line, tries **AttachThreadInput + SetForegroundWindow** on the **z-order window below** Raycast, then re-checks. **`npm run test`** / **`npm run test:dotnet`** added. **Paste** success uses a **new** toast (hidden Phi toast was mutating wrong UI).
+- **NPU Text Tools (selection):** After **`closeMainWindow`**, capture uses **`getSelectedText()`** first (Raycast API — avoids SendKeys/Ctrl+C when supported on Windows). Broadened **`RaycastDetector`** (paths / lowercase process names) for helper focus polling.
 
 - **Phi bridges (`npu-notes-ext`, `npu-dev-toolbox-ext`, `npu-awake-ext`):** Added missing `TryUnlockNpuFeature()` call before any `LanguageModel` access. All three bridges were skipping the LAF unlock step, causing "Access is denied. Limited Access Feature is not available: com.microsoft.windows.ai.languagemodel" at runtime. `npu-text-tools-ext` was the only bridge with the unlock already in place. Token formula: `Base64(SHA256_UTF8("featureId!lafKey!pfn")[0..15])` — UTF-8 encoding is required (UTF-16LE produces Status 0).
 

@@ -74,7 +74,7 @@ To list related registrations: `Get-AppxPackage | Where-Object { $_.Name -match 
 ### IPC contracts (extension-specific)
 
 - **Argv and JSON shapes differ per bridge** — the image editor uses command names + paths; text tools uses `phi-rewrite` + mode + temp file; future bridges add new verbs in their own `Program.cs`.
-- **Planned (`FEATURE_PLAN.md` §12):** `npu-text-tools-ext` may ship a **`hotkey-helper`** WinExe that spawns the **same** `phi-rewrite` contract with identical `cwd` rules — not a second WinRT host.
+- **`npu-text-tools-ext` selection helper:** `assets/bin/selection-helper/TextSelectionHelper.exe` — `send-copy <ms>` / `send-paste <ms>`: wait until foreground is not Raycast (poll + optional **AttachThreadInput** / **SetForegroundWindow** on window below in z-order), then **SendKeys** (STA). Exit **2** if Raycast never released focus (do not send bogus Copy). Published separately from `NpuBridge.exe`. **Tests:** `npm run test` + `npm run test:dotnet` in `npu-text-tools-ext`. See `selection-helper/README.md`.
 - **Do not** assume all bridges share the same success JSON—read the spawn site in TS and the matching C# branch.
 - **Reference:** `EXTENSION_REGISTRY.md` + top-of-file or per-`case` comments in `bridge/Program.cs`.
 

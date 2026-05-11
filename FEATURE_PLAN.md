@@ -269,11 +269,11 @@ NpuBridge.exe phi-rewrite <mode> <tempInputFile>
 - **Capability:** `systemAIModels` in `Package.appxmanifest` is sufficient for Developer Mode. No LAF token needed for local development.
 - Bridge is a **new** C# project at `npu-text-tools-ext/bridge/` — do not reuse npu-image-editor's bridge.
 
-### Global hotkey presets — rewrite selection in-place (planned)
+### Global hotkey presets — rewrite selection in-place
 
-**§12** specifies a **Windows companion helper** (keeper-style) that binds **user-configurable global hotkeys** to the **same** `phi-rewrite` bridge, using a **clipboard capture / paste-back** pipeline so users never open Raycast. Presets live in `%LocalAppData%\NpuTextTools\presets.json`; Raycast provides setup and editing UX.
+**Update (2026-05):** The **shipped** design is **`docs/FORWARD_ROADMAP.md` §3** (Raycast command hotkeys; **`getSelectedText()`** for capture after **`closeMainWindow`**; short-lived **`TextSelectionHelper.exe`** for synthetic copy/paste fallback; no resident `RegisterHotKey` daemon). Treat **`FEATURE_PLAN.md` §12** below as **archive** for an optional future **standalone preset + tray helper** (`presets.json`, etc.) — **not** what users install for v1.
 
-**API direction:** Prefer **`TextRewriter`** / official **Rewrite** skill from **`docs/REWRITE_INFO.md`** for builtin rewrite-style modes where the SDK allows; keep **`LanguageModel` + `CreateContext`** for **custom** instructions and any mode the skill API cannot express. See §12 table “Official API alignment.”
+**API direction (still applies to bridge work):** Prefer **`TextRewriter`** / official **Rewrite** skill from **`docs/REWRITE_INFO.md`** for builtin rewrite-style modes where the SDK allows; keep **`LanguageModel` + `CreateContext`** for **custom** instructions and any mode the skill API cannot express. See §12 table “Official API alignment.”
 
 <!--
 ### DEBUG / EXTENSION NOTES — Section 3 (Phi-Silica Text Tools), 2026-05-07
@@ -1194,15 +1194,21 @@ If TS-side rerank is too slow, add bridge `phi-rerank` to batch 20–40 hits in 
 
 ## 12. Global hotkey text rewrite (selection in-place, no Raycast HUD)
 
-**Extension:** `npu-text-tools-ext` (extends the shipped §3 commands — same bridge, new companion process + Raycast management UI)  
+**Extension:** `npu-text-tools-ext`  
 **Authoritative Microsoft doc in-repo:** `docs/REWRITE_INFO.md` (Phi Silica, `LanguageModel` readiness, **Text Intelligence Skills** — `TextSummarizer`, **Rewrite** / `TextRewriter`)  
-**Status:** Planned (not implemented).
+**Status:** **Superseded for v1** — shipped baseline is **`docs/FORWARD_ROADMAP.md` §3** (Raycast hotkeys + **`getSelectedText()`** + optional **`TextSelectionHelper.exe`**). **This §12** documents an **optional future** (standalone `RegisterHotKey` companion + `%LocalAppData%\NpuTextTools\presets.json`) if we ever want hotkeys **without** Raycast running or richer preset files than “one Raycast hotkey per command.”
 
-### Problem statement
+### Update (2026-05) — what actually shipped
+
+- **Hotkeys:** Raycast **Settings → Shortcuts** on built-in **`… (Paste Selection)`** / **`… (Review Selection)`** commands (same mechanism as other extensions).
+- **Selection capture:** **`getSelectedText()`** immediately after **`closeMainWindow`** (fixes Windows focus races vs naive Ctrl+C-only capture). Fallback: sentinel clipboard + **`TextSelectionHelper.exe send-copy`** (foreground poll, **AttachThreadInput** / **SetForegroundWindow**, exit **2** if Raycast never releases focus).
+- **Paste:** Helper **`send-paste`** after dismiss; see `npu-text-tools-ext/selection-helper/README.md`, `NOTES.md`, `RUNBOOK.md`.
+
+### Problem statement (original §12 intent — archive)
 
 Users want **one shortcut** (e.g. a chord like **Alt+Win+G**) that, while text is **selected in any app**, **rewrites that selection in place** — without opening Raycast, pasting into a form, or copying the result manually. They also want **multiple shortcuts** bound to **different rewrite presets** (grammar vs simplify vs custom instructions), managed like **user-defined profiles**, not six fixed OS-wide shortcuts hardcoded in C#.
 
-Today (§3), every flow goes through a **Raycast command**: clipboard prefill is convenient but still **requires Raycast as the front-end**. Raycast does **not** provide a supported way to run extension code on **global OS hotkeys while Raycast is backgrounded or quit**; command hotkeys only fire when the user invokes Raycast first. So the suite needs a **small Windows companion** (same pattern family as `npu-awake-ext/keeper/`) that owns **global hotkeys** and **delegates rewriting** to the existing **`NpuBridge.exe phi-rewrite`** pipeline.
+**Original §12 premise:** Raycast does **not** provide a supported way to run extension code on **global OS hotkeys while Raycast is backgrounded or quit**; so a **small Windows companion** that owns **`RegisterHotKey`** was proposed. **Shipped v1** instead keeps **hotkeys inside Raycast** and uses **`getSelectedText()`** so capture does not depend on a keeper process.
 
 ### Goals
 

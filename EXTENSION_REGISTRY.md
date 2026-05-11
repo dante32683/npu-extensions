@@ -9,7 +9,7 @@
 | Folder | Kind | Native binary | Sparse package `Identity Name`¹ | IPC / commands (authoritative: `bridge/Program.cs`) | Status |
 |--------|------|---------------|---------------------------------|-----------------------------------------------------|--------|
 | `npu-image-editor-ext` | Raycast + WinRT bridge | `assets/bin/NpuBridge.exe` | `NpuBridge.Identity` | `remove-background`, `super-resolution`, `ocr`, … (see source) | Active |
-| `npu-text-tools-ext` | Raycast + Phi bridge | `assets/bin/NpuBridge.exe` | `NpuTextToolsBridge.Identity` | `phi-rewrite` + modes in source | Active |
+| `npu-text-tools-ext` | Raycast + Phi bridge + WinForms helper | `assets/bin/NpuBridge.exe` + `assets/bin/selection-helper/TextSelectionHelper.exe` (Ctrl+C/V; FDD or self-contained publish — see `selection-helper/README.md`) | `NpuTextToolsBridge.Identity` | `phi-rewrite` + modes in source; helper argv `send-copy` / `send-paste` | Active |
 | `npu-notes-ext` | Raycast + bridge | `assets/bin/NpuBridge.exe` | `NpuNotesBridge.Identity` | `phi-note` | Active |
 | `npu-awake-ext` | Raycast + Win32 keeper + (planned) Phi bridge | `assets/bin/AwakeKeeper.exe` (+ planned: `assets/bin/NpuBridge.exe`) | planned: `NpuAwakeBridge.Identity` | Manual: `indefinite`, `timed`, `until`, `screen-off` (keeper). Planned: `awake-natural` (NL routing + schedules) | Manual Active / Smart Planning |
 | `npu-dev-toolbox-ext` | Raycast + Phi bridge | `assets/bin/NpuBridge.exe` | `NpuDevToolboxBridge.Identity` | `cwd-of-pid <pid>`, `phi-commit <tempInputFile>` (Raycast cmds: `open-workspace`, `workspace-history`, `commit-message`) | Active |
