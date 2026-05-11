@@ -11,7 +11,27 @@
       "name": "awake",
       "title": "Awake",
       "description": "Toggle indefinite keep-awake on/off.",
-      "mode": "no-view"
+      "mode": "no-view",
+      "preferences": [
+        {
+          "name": "defaultAwakeMode",
+          "title": "Default Awake Mode",
+          "description": "Mode activated by the Awake toggle command.",
+          "type": "dropdown",
+          "required": false,
+          "default": "indefinite",
+          "data": [
+            {
+              "title": "Indefinite",
+              "value": "indefinite"
+            },
+            {
+              "title": "Screen-Off (display sleeps, system stays awake)",
+              "value": "screen-off"
+            }
+          ]
+        }
+      ]
     },
     {
       "name": "awake-natural",
@@ -24,6 +44,32 @@
           "placeholder": "e.g. keep awake for 90 minutes",
           "type": "text",
           "required": false
+        }
+      ],
+      "preferences": [
+        {
+          "name": "defaultScheduleStart",
+          "title": "Default Schedule Start",
+          "description": "When Smart Awake parses a schedule without a start time, use this HH:mm.",
+          "type": "textfield",
+          "required": false,
+          "default": "09:00"
+        },
+        {
+          "name": "defaultScheduleEnd",
+          "title": "Default Schedule End",
+          "description": "When Smart Awake parses a schedule without an end time, use this HH:mm.",
+          "type": "textfield",
+          "required": false,
+          "default": "17:00"
+        },
+        {
+          "name": "defaultScheduleDays",
+          "title": "Default Schedule Days",
+          "description": "Comma-separated weekdays when the model omits days: mon,tue,wed,thu,fri,sat,sun.",
+          "type": "textfield",
+          "required": false,
+          "default": "mon,tue,wed,thu,fri"
         }
       ]
     },
@@ -39,6 +85,16 @@
           "type": "text",
           "required": false
         }
+      ],
+      "preferences": [
+        {
+          "name": "defaultDuration",
+          "title": "Default Duration (minutes)",
+          "description": "Pre-filled value for the Awake For command when opened without an argument.",
+          "type": "textfield",
+          "required": false,
+          "default": "60"
+        }
       ]
     },
     {
@@ -52,6 +108,16 @@
           "placeholder": "e.g. 17:30",
           "type": "text",
           "required": false
+        }
+      ],
+      "preferences": [
+        {
+          "name": "defaultUntilTime",
+          "title": "Default Until Time",
+          "description": "Pre-filled time for Awake Until (HH:mm) when opened without an argument.",
+          "type": "textfield",
+          "required": false,
+          "default": "17:00"
         }
       ]
     },
@@ -105,64 +171,6 @@
     "publish": "npx @raycast/api@latest publish"
   },
   "preferences": [
-    {
-      "name": "defaultAwakeMode",
-      "title": "Default Awake Mode",
-      "description": "Mode activated by the Awake toggle command.",
-      "type": "dropdown",
-      "required": false,
-      "default": "indefinite",
-      "data": [
-        {
-          "title": "Indefinite",
-          "value": "indefinite"
-        },
-        {
-          "title": "Screen-Off (display sleeps, system stays awake)",
-          "value": "screen-off"
-        }
-      ]
-    },
-    {
-      "name": "defaultDuration",
-      "title": "Default Duration (minutes)",
-      "description": "Pre-filled value for the Awake For command when opened without an argument.",
-      "type": "textfield",
-      "required": false,
-      "default": "60"
-    },
-    {
-      "name": "defaultUntilTime",
-      "title": "Default Until Time",
-      "description": "Pre-filled time for Awake Until (HH:mm) when opened without an argument.",
-      "type": "textfield",
-      "required": false,
-      "default": "17:00"
-    },
-    {
-      "name": "defaultScheduleStart",
-      "title": "Default Schedule Start (Smart Awake)",
-      "description": "When Smart Awake parses a schedule without a start time, use this HH:mm.",
-      "type": "textfield",
-      "required": false,
-      "default": "09:00"
-    },
-    {
-      "name": "defaultScheduleEnd",
-      "title": "Default Schedule End (Smart Awake)",
-      "description": "When Smart Awake parses a schedule without an end time, use this HH:mm.",
-      "type": "textfield",
-      "required": false,
-      "default": "17:00"
-    },
-    {
-      "name": "defaultScheduleDays",
-      "title": "Default Schedule Days (Smart Awake)",
-      "description": "Comma-separated weekdays when the model omits days: mon,tue,wed,thu,fri,sat,sun.",
-      "type": "textfield",
-      "required": false,
-      "default": "mon,tue,wed,thu,fri"
-    },
     {
       "name": "showLidNote",
       "title": "Lid Close Note",

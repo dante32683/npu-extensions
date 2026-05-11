@@ -11,7 +11,24 @@
             "name": "modify-image",
             "title": "Modify Image",
             "description": "All image tools - file list with full action panel.",
-            "mode": "view"
+            "mode": "view",
+            "preferences": [
+                {
+                    "name": "defaultJpegQuality",
+                    "title": "Default JPEG Quality",
+                    "description": "Pre-filled quality (1-100) for the Optimize action.",
+                    "type": "textfield",
+                    "required": false,
+                    "default": "75"
+                },
+                {
+                    "name": "clipboardOutputDir",
+                    "title": "Clipboard Image Output",
+                    "description": "Where to save images processed from clipboard. Defaults to Desktop.",
+                    "type": "directory",
+                    "required": false
+                }
+            ]
         },
         {
             "name": "remove-background",
@@ -67,21 +84,6 @@
                     "value": "4"
                 }
             ]
-        },
-        {
-            "name": "defaultJpegQuality",
-            "title": "Default JPEG Quality",
-            "description": "Pre-filled quality (1–100) for the Optimize action.",
-            "type": "textfield",
-            "required": false,
-            "default": "75"
-        },
-        {
-            "name": "clipboardOutputDir",
-            "title": "Clipboard Image Output",
-            "description": "Where to save images processed from clipboard. Defaults to Desktop.",
-            "type": "directory",
-            "required": false
         },
         {
             "name": "autoOpenResult",

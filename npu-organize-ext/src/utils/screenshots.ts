@@ -13,6 +13,9 @@ export interface OrganizePreferences {
     maxSlugTokens?: string
     showSuccessToasts?: boolean
     ensureModelReady?: boolean
+    skipOnBattery?: boolean
+    debounceMs?: string
+    ignorePattern?: string
 }
 
 export interface ResolvedPreferences {
@@ -24,6 +27,9 @@ export interface ResolvedPreferences {
     maxSlugTokens: number
     showSuccessToasts: boolean
     ensureModelReady: boolean
+    skipOnBattery: boolean
+    debounceMs: number
+    ignorePattern: string | null
 }
 
 export interface ScreenshotCandidate {
@@ -51,6 +57,11 @@ export function resolvePreferences(
     const tokensParsed = parseInt(raw.maxSlugTokens ?? "", 10)
     const maxSlugTokens = Number.isFinite(tokensParsed) && tokensParsed > 0 ? tokensParsed : DEFAULT_MAX_TOKENS
 
+    const debounceParsed = parseInt(raw.debounceMs ?? "", 10)
+    const debounceMs = Number.isFinite(debounceParsed) && debounceParsed >= 0 ? debounceParsed : 1500
+
+    const ignorePatternTrimmed = (raw.ignorePattern ?? "").trim()
+
     return {
         watchFolder,
         namingPattern: raw.namingPattern === "slug-only" ? "slug-only" : "date-slug",
@@ -60,6 +71,9 @@ export function resolvePreferences(
         maxSlugTokens,
         showSuccessToasts: raw.showSuccessToasts !== false,
         ensureModelReady: raw.ensureModelReady !== false,
+        skipOnBattery: raw.skipOnBattery !== false,
+        debounceMs,
+        ignorePattern: ignorePatternTrimmed.length > 0 ? ignorePatternTrimmed : null,
     }
 }
 

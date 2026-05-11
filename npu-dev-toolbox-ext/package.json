@@ -31,6 +31,20 @@
                     "type": "text",
                     "required": false
                 }
+            ],
+            "preferences": [
+                {
+                    "name": "commitStyle",
+                    "title": "Commit Style",
+                    "description": "Default commit message style for the Commit Message command.",
+                    "type": "dropdown",
+                    "required": false,
+                    "default": "conventional",
+                    "data": [
+                        { "title": "Conventional Commits", "value": "conventional" },
+                        { "title": "Plain", "value": "plain" }
+                    ]
+                }
             ]
         }
     ],
@@ -116,18 +130,6 @@
             "type": "textfield",
             "required": false,
             "default": ""
-        },
-        {
-            "name": "commitStyle",
-            "title": "Commit Style",
-            "description": "Default commit message style for the Commit Message command.",
-            "type": "dropdown",
-            "required": false,
-            "default": "conventional",
-            "data": [
-                { "title": "Conventional Commits", "value": "conventional" },
-                { "title": "Plain", "value": "plain" }
-            ]
         },
         {
             "name": "showSuccessToasts",

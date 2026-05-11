@@ -22,8 +22,6 @@ type ExtensionPreferences = {
   "ideChoice": "cursor" | "code" | "windsurf" | "idea" | "pycharm" | "webstorm" | "rider" | "subl" | "notepad++" | "custom",
   /** IDE Custom Path - Full path to a .exe or .lnk to use when 'IDE' is set to 'Custom Path'. */
   "ideCustomPath": string,
-  /** Commit Style - Default commit message style for the Commit Message command. */
-  "commitStyle": "conventional" | "plain",
   /** Show Success Toasts - When enabled, shows a success toast after creating a commit or opening a workspace. */
   "showSuccessToasts": boolean,
   /** Ensure AI Model Ready - When enabled, calls EnsureReadyAsync before AI operations to avoid 'NotReady' errors. */
@@ -41,7 +39,10 @@ declare namespace Preferences {
   /** Preferences accessible in the `workspace-history` command */
   export type WorkspaceHistory = ExtensionPreferences & {}
   /** Preferences accessible in the `commit-message` command */
-  export type CommitMessage = ExtensionPreferences & {}
+  export type CommitMessage = ExtensionPreferences & {
+  /** Commit Style - Default commit message style for the Commit Message command. */
+  "commitStyle": "conventional" | "plain"
+}
 }
 
 declare namespace Arguments {

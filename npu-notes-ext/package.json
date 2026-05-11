@@ -11,7 +11,18 @@
             "name": "add-note",
             "title": "Add Note",
             "description": "Write a sloppy note - Phi formats and files it.",
-            "mode": "view"
+            "mode": "view",
+            "preferences": [
+                {
+                    "name": "prefillFromClipboard",
+                    "title": "Prefill From Clipboard",
+                    "description": "When enabled, the Add Note form pre-fills with clipboard text.",
+                    "type": "checkbox",
+                    "required": false,
+                    "default": false,
+                    "label": "Prefill Add Note with clipboard text"
+                }
+            ]
         },
         {
             "name": "browse-notes",
@@ -29,7 +40,33 @@
             "name": "search-notes",
             "title": "Search Notes",
             "description": "Search notes by keyword, then fall back to Phi-Silica for semantic matches.",
-            "mode": "view"
+            "mode": "view",
+            "preferences": [
+                {
+                    "name": "semanticSearchDebounce",
+                    "title": "Semantic Search Debounce (ms)",
+                    "description": "Wait time before starting a semantic fallback search while typing.",
+                    "type": "textfield",
+                    "required": false,
+                    "default": "600"
+                },
+                {
+                    "name": "maxSemanticChecks",
+                    "title": "Max Semantic Candidate Checks",
+                    "description": "When keyword matches are scarce, at most this many notes are evaluated with Phi (caps NPU calls).",
+                    "type": "textfield",
+                    "required": false,
+                    "default": "30"
+                },
+                {
+                    "name": "maxSemanticResults",
+                    "title": "Max Semantic Results",
+                    "description": "Maximum number of notes to return from a semantic search match.",
+                    "type": "textfield",
+                    "required": false,
+                    "default": "5"
+                }
+            ]
         }
     ],
     "preferences": [
@@ -40,39 +77,6 @@
             "type": "directory",
             "required": false,
             "default": ""
-        },
-        {
-            "name": "prefillFromClipboard",
-            "title": "Prefill From Clipboard",
-            "description": "When enabled, the Add Note form pre-fills with clipboard text.",
-            "type": "checkbox",
-            "required": false,
-            "default": false,
-            "label": "Prefill Add Note with clipboard text"
-        },
-        {
-            "name": "semanticSearchDebounce",
-            "title": "Semantic Search Debounce (ms)",
-            "description": "Wait time before starting a semantic fallback search while typing.",
-            "type": "textfield",
-            "required": false,
-            "default": "600"
-        },
-        {
-            "name": "maxSemanticChecks",
-            "title": "Max Semantic Candidate Checks",
-            "description": "When keyword matches are scarce, at most this many notes are evaluated with Phi (caps NPU calls).",
-            "type": "textfield",
-            "required": false,
-            "default": "30"
-        },
-        {
-            "name": "maxSemanticResults",
-            "title": "Max Semantic Results",
-            "description": "Maximum number of notes to return from a semantic search match.",
-            "type": "textfield",
-            "required": false,
-            "default": "5"
         },
         {
             "name": "showSuccessToasts",

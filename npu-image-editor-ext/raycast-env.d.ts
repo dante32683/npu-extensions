@@ -10,10 +10,6 @@
 type ExtensionPreferences = {
   /** Default Scale Factor - Pre-selected scale for Super Resolution. */
   "defaultScaleFactor": "2" | "4",
-  /** Default JPEG Quality - Pre-filled quality (1–100) for the Optimize action. */
-  "defaultJpegQuality": string,
-  /** Clipboard Image Output - Where to save images processed from clipboard. Defaults to Desktop. */
-  "clipboardOutputDir"?: string,
   /** Auto Open Result - Automatically open the resulting image in the default viewer after processing. */
   "autoOpenResult": boolean,
   /** Show Success Toasts - When enabled, shows a success toast after an image operation completes. */
@@ -27,7 +23,12 @@ declare type Preferences = ExtensionPreferences
 
 declare namespace Preferences {
   /** Preferences accessible in the `modify-image` command */
-  export type ModifyImage = ExtensionPreferences & {}
+  export type ModifyImage = ExtensionPreferences & {
+  /** Default JPEG Quality - Pre-filled quality (1-100) for the Optimize action. */
+  "defaultJpegQuality": string,
+  /** Clipboard Image Output - Where to save images processed from clipboard. Defaults to Desktop. */
+  "clipboardOutputDir"?: string
+}
   /** Preferences accessible in the `remove-background` command */
   export type RemoveBackground = ExtensionPreferences & {}
   /** Preferences accessible in the `super-resolution` command */

@@ -3,6 +3,7 @@ import path from "path"
 import { describeScreenshot } from "./run-bridge"
 import { ScreenshotCandidate, ResolvedPreferences } from "./screenshots"
 import { buildFallbackSlug, buildTargetFilename, resolveCollision, slugify } from "./slug"
+import { readKeeperState, getPaths } from "./organize-state"
 
 export type ProposalStatus = "pending" | "ready" | "renamed" | "skipped" | "error"
 
@@ -121,6 +122,7 @@ export function applyProposal(proposal: RenameProposal): RenameProposal {
 
     try {
         fs.renameSync(src, dest)
+        updateStateCursor(dest)
         return { ...proposal, status: "renamed" }
     } catch (err: unknown) {
         return {
@@ -128,6 +130,33 @@ export function applyProposal(proposal: RenameProposal): RenameProposal {
             status: "error",
             error: err instanceof Error ? err.message : String(err),
         }
+    }
+}
+
+/**
+ * Bump the shared state.json cursor so the OrganizeKeeper (if running) won't
+ * race the manual command on the same file. Best-effort: we don't fail the
+ * rename if the state file isn't writable.
+ */
+function updateStateCursor(renamedPath: string): void {
+    try {
+        const state = readKeeperState()
+        const now = new Date().toISOString()
+        const next = {
+            ...state,
+            lastProcessedAt: now,
+            lastProcessedPath: renamedPath,
+            lastHeartbeatAt: now,
+            processed: (state.processed ?? 0) + 1,
+        }
+        const { statePath } = getPaths()
+        const dir = path.dirname(statePath)
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+        const tmp = `${statePath}.${process.pid}.${Date.now()}.tmp`
+        fs.writeFileSync(tmp, JSON.stringify(next, null, 2), "utf8")
+        fs.renameSync(tmp, statePath)
+    } catch {
+        // best-effort
     }
 }
 

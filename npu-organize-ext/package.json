@@ -18,6 +18,51 @@
             "title": "Dry Run Screenshot Rename",
             "description": "Preview the proposed names for new screenshots without renaming any files.",
             "mode": "view"
+        },
+        {
+            "name": "start-screenshot-watcher",
+            "title": "Start Screenshot Watcher",
+            "description": "Launch the resident OrganizeKeeper that watches the configured Screenshots folder and renames new captures automatically.",
+            "mode": "no-view",
+            "preferences": [
+                {
+                    "name": "skipOnBattery",
+                    "title": "Skip on Battery",
+                    "description": "When the watcher is running and the device is on battery, skip new screenshots until AC power is restored. Manual commands always run regardless of power.",
+                    "type": "checkbox",
+                    "required": false,
+                    "default": true,
+                    "label": "Pause auto-rename on battery power"
+                },
+                {
+                    "name": "debounceMs",
+                    "title": "Debounce (ms)",
+                    "description": "Milliseconds of file-event quiescence the watcher waits before processing a path. Screenshot tools write temp files / re-touch the final file; this avoids racing them.",
+                    "type": "textfield",
+                    "required": false,
+                    "default": "1500"
+                },
+                {
+                    "name": "ignorePattern",
+                    "title": "Ignore Pattern (regex)",
+                    "description": "Optional case-insensitive regex matched against the basename. Files that match are never renamed by the watcher. The built-in date-prefix loop guard runs in addition to this.",
+                    "type": "textfield",
+                    "required": false,
+                    "default": ""
+                }
+            ]
+        },
+        {
+            "name": "stop-screenshot-watcher",
+            "title": "Stop Screenshot Watcher",
+            "description": "Gracefully stop the OrganizeKeeper watcher (writes a stop sentinel; kills the PID if still alive after 3s).",
+            "mode": "no-view"
+        },
+        {
+            "name": "screenshot-watcher-status",
+            "title": "Screenshot Watcher Status",
+            "description": "Show running status, counters, last activity, and the recent log tail for the OrganizeKeeper watcher.",
+            "mode": "view"
         }
     ],
     "preferences": [

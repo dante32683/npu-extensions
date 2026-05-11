@@ -10,14 +10,6 @@
 type ExtensionPreferences = {
   /** Notes Folder - Where your notes are saved. Defaults to Documents\RaycastNotes. */
   "notesFolder": string,
-  /** Prefill From Clipboard - When enabled, the Add Note form pre-fills with clipboard text. */
-  "prefillFromClipboard": boolean,
-  /** Semantic Search Debounce (ms) - Wait time before starting a semantic fallback search while typing. */
-  "semanticSearchDebounce": string,
-  /** Max Semantic Candidate Checks - When keyword matches are scarce, at most this many notes are evaluated with Phi (caps NPU calls). */
-  "maxSemanticChecks": string,
-  /** Max Semantic Results - Maximum number of notes to return from a semantic search match. */
-  "maxSemanticResults": string,
   /** Show Success Toasts - When enabled, shows a success toast after saving or deleting a note. */
   "showSuccessToasts": boolean,
   /** Ensure AI Model Ready - When enabled, calls EnsureReadyAsync before AI operations to avoid 'NotReady' errors. */
@@ -29,13 +21,23 @@ declare type Preferences = ExtensionPreferences
 
 declare namespace Preferences {
   /** Preferences accessible in the `add-note` command */
-  export type AddNote = ExtensionPreferences & {}
+  export type AddNote = ExtensionPreferences & {
+  /** Prefill From Clipboard - When enabled, the Add Note form pre-fills with clipboard text. */
+  "prefillFromClipboard": boolean
+}
   /** Preferences accessible in the `browse-notes` command */
   export type BrowseNotes = ExtensionPreferences & {}
   /** Preferences accessible in the `find-related` command */
   export type FindRelated = ExtensionPreferences & {}
   /** Preferences accessible in the `search-notes` command */
-  export type SearchNotes = ExtensionPreferences & {}
+  export type SearchNotes = ExtensionPreferences & {
+  /** Semantic Search Debounce (ms) - Wait time before starting a semantic fallback search while typing. */
+  "semanticSearchDebounce": string,
+  /** Max Semantic Candidate Checks - When keyword matches are scarce, at most this many notes are evaluated with Phi (caps NPU calls). */
+  "maxSemanticChecks": string,
+  /** Max Semantic Results - Maximum number of notes to return from a semantic search match. */
+  "maxSemanticResults": string
+}
 }
 
 declare namespace Arguments {
