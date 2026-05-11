@@ -25,6 +25,11 @@ $bridges = @(
         Name = "NPU Dev Toolbox Bridge"
         Bin = "npu-dev-toolbox-ext\assets\bin"
         Manifest = "npu-dev-toolbox-ext\bridge\Package.appxmanifest"
+    },
+    @{
+        Name = "NPU Organize Bridge"
+        Bin = "npu-organize-ext\assets\bin"
+        Manifest = "npu-organize-ext\bridge\Package.appxmanifest"
     }
 )
 

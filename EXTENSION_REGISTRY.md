@@ -13,6 +13,7 @@
 | `npu-notes-ext` | Raycast + bridge | `assets/bin/NpuBridge.exe` | `NpuNotesBridge.Identity` | `phi-note` | Active |
 | `npu-awake-ext` | Raycast + Win32 keeper + (planned) Phi bridge | `assets/bin/AwakeKeeper.exe` (+ planned: `assets/bin/NpuBridge.exe`) | planned: `NpuAwakeBridge.Identity` | Manual: `indefinite`, `timed`, `until`, `screen-off` (keeper). Planned: `awake-natural` (NL routing + schedules) | Manual Active / Smart Planning |
 | `npu-dev-toolbox-ext` | Raycast + Phi bridge | `assets/bin/NpuBridge.exe` | `NpuDevToolboxBridge.Identity` | `cwd-of-pid <pid>`, `phi-commit <tempInputFile>` (Raycast cmds: `open-workspace`, `workspace-history`, `commit-message`) | Active |
+| `npu-organize-ext` | Raycast + WinRT bridge | `assets/bin/NpuBridge.exe` | `NpuOrganizeBridge.Identity` | `screenshot-title <imagePath> [--ensure-ready] [--no-ocr]` → `{ status, description, confidence, ocrExcerpt, elapsedMs }`. Uses `ImageDescriptionGenerator` (caption) + optional `OcrEngine`. Raycast cmds: `rename-new-screenshots`, `dry-run-screenshot-rename`. | Active (Roadmap §6 phases 0–1) |
 | `image-modification-ext` | Raycast (if present) | *None* | *None* | Pure TS | Optional |
 
 ¹ Always confirm in that extension’s `bridge/Package.appxmanifest` and match `app.manifest` `packageName` when the bridge uses embedded MSIX activation.

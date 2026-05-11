@@ -1,0 +1,115 @@
+{
+    "$schema": "https://www.raycast.com/schemas/extension.json",
+    "name": "npu-organize",
+    "title": "NPU Organize",
+    "description": "Organize files with on-device AI. Phase 1: rename screenshots using Windows Image Description (ImageDescriptionGenerator) + OCR.",
+    "icon": "extension-icon.png",
+    "author": "user",
+    "license": "MIT",
+    "commands": [
+        {
+            "name": "rename-new-screenshots",
+            "title": "Rename New Screenshots",
+            "description": "Scan the watched screenshots folder, describe each new image on-device, and rename it to a short hyphenated slug (optionally prefixed with the capture date).",
+            "mode": "view"
+        },
+        {
+            "name": "dry-run-screenshot-rename",
+            "title": "Dry Run Screenshot Rename",
+            "description": "Preview the proposed names for new screenshots without renaming any files.",
+            "mode": "view"
+        }
+    ],
+    "preferences": [
+        {
+            "name": "watchFolder",
+            "title": "Screenshots Folder",
+            "description": "Folder to scan for new screenshots. Defaults to %UserProfile%\\Pictures\\Screenshots.",
+            "type": "directory",
+            "required": false
+        },
+        {
+            "name": "namingPattern",
+            "title": "Naming Pattern",
+            "description": "How renamed files are constructed. date-slug uses {YYYY-MM-DD}_{slug}.{ext} (matches notes). slug-only drops the date prefix.",
+            "type": "dropdown",
+            "required": false,
+            "default": "date-slug",
+            "data": [
+                { "title": "Date + Slug (2026-05-10_settings-dialog.png)", "value": "date-slug" },
+                { "title": "Slug only (settings-dialog.png)", "value": "slug-only" }
+            ]
+        },
+        {
+            "name": "fileExtensions",
+            "title": "File Extensions",
+            "description": "Comma-separated list of file extensions to rename (case-insensitive, leading dot optional).",
+            "type": "textfield",
+            "required": false,
+            "default": ".png,.jpg,.jpeg,.webp"
+        },
+        {
+            "name": "skipAlreadyNamed",
+            "title": "Skip Already-Named Files",
+            "description": "Skip files whose name already starts with a YYYY-MM-DD_ prefix, to avoid infinite re-rename loops.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Skip files already in date_slug shape"
+        },
+        {
+            "name": "maxFileSizeMb",
+            "title": "Max File Size (MB)",
+            "description": "Skip files larger than this (in megabytes) to protect the NPU. Empty = no limit.",
+            "type": "textfield",
+            "required": false,
+            "default": "20"
+        },
+        {
+            "name": "maxSlugTokens",
+            "title": "Max Slug Tokens",
+            "description": "How many hyphen-separated words to keep in the slug. Recommended 3–5.",
+            "type": "textfield",
+            "required": false,
+            "default": "5"
+        },
+        {
+            "name": "showSuccessToasts",
+            "title": "Show Success Toasts",
+            "description": "When enabled, shows a toast summary after the batch completes.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Show success notifications"
+        },
+        {
+            "name": "ensureModelReady",
+            "title": "Ensure AI Model Ready",
+            "description": "When enabled, the bridge calls EnsureReadyAsync on ImageDescriptionGenerator before generating, avoiding 'NotReady' errors on first run.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Wait for AI model readiness"
+        }
+    ],
+    "dependencies": {
+        "@raycast/api": "^1.71.0"
+    },
+    "devDependencies": {
+        "@raycast/eslint-config": "^1.0.8",
+        "@types/node": "20.8.10",
+        "@types/react": "19.0.10",
+        "eslint": "^8.51.0",
+        "prettier": "^3.0.3",
+        "typescript": "^5.2.2",
+        "vitest": "^1.6.0"
+    },
+    "scripts": {
+        "build": "ray build -e dist",
+        "dev": "ray develop",
+        "fix-lint": "ray lint --fix",
+        "lint": "ray lint",
+        "publish": "npx @raycast/api@latest publish",
+        "test": "vitest run"
+    }
+}

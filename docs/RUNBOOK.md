@@ -104,6 +104,13 @@ When working in **`npu-image-editor-ext/bridge/Program.cs`**:
 - **Super resolution** — `ImageScaler` readiness; respect scale limits per OS/hardware. Same **`--ensure-ready`** flag.
 - **OCR** — `SoftwareBitmap` → **Bgra8** for `OcrEngine`; dimension limits per docs.
 
+### Organize / screenshot rename (reference — details in `npu-organize-ext/NOTES.md`)
+
+- **Bridge verb:** `NpuBridge.exe screenshot-title <imagePath> [--ensure-ready] [--no-ocr]` — calls **`Microsoft.Windows.AI.Imaging.ImageDescriptionGenerator.DescribeAsync`** with **`ImageDescriptionKind.BriefDescription`** (caption scenario, same API the AI Dev Gallery "Describe Image WCR" sample uses) and optionally augments with `Windows.Media.Ocr.OcrEngine`. Identity **`NpuOrganizeBridge.Identity`**.
+- **JSON contract:** `{ status, description, confidence: "high" | "low", ocrExcerpt: string|null, elapsedMs }` — TS side runs the deterministic `slugify()` step; bridge never writes filenames itself. Fallback slug `screenshot-{FNV-1a-hash}` is applied in TS when `confidence === "low"` or the sanitized slug is empty.
+- **Filename convention:** `{YYYY-MM-DD}_{slug}.{ext}` (matches `npu-notes-ext` `saveNote`); `slug-only` pref drops the date prefix. Anti-loop guard skips files whose basename already matches `^\d{4}-\d{2}-\d{2}_`.
+- **Don't fight Game Bar filenames:** the default Windows Game Bar saves to `%UserProfile%\Videos\Captures`, not `Pictures\Screenshots` — adjust the **Screenshots Folder** preference per source app. Microsoft Snipping Tool drops `.png` directly in `Pictures\Screenshots`, so the default works.
+
 ## Key file patterns (not a full inventory)
 
 | Pattern | Role |
