@@ -23,7 +23,13 @@ type ExtensionPreferences = {
   /** Show Success Toasts - When enabled, shows a toast summary after the batch completes. */
   "showSuccessToasts": boolean,
   /** Ensure AI Model Ready - When enabled, the bridge calls EnsureReadyAsync on ImageDescriptionGenerator before generating, avoiding 'NotReady' errors on first run. */
-  "ensureModelReady": boolean
+  "ensureModelReady": boolean,
+  /** Watcher: Skip on Battery - When the watcher is running and the device is on battery, skip new screenshots until AC power is restored. Manual commands always run regardless of power. */
+  "skipOnBattery": boolean,
+  /** Watcher: Debounce (ms) - Milliseconds of file-event quiescence the watcher waits before processing a path. Screenshot tools write temp files / re-touch the final file; this avoids racing them. */
+  "debounceMs": string,
+  /** Watcher: Ignore Pattern (regex) - Optional case-insensitive regex matched against the basename. Files that match are never renamed by the watcher. The built-in date-prefix loop guard runs in addition to this. */
+  "ignorePattern": string
 }
 
 /** Preferences accessible in all the extension's commands */
@@ -34,19 +40,8 @@ declare namespace Preferences {
   export type RenameNewScreenshots = ExtensionPreferences & {}
   /** Preferences accessible in the `dry-run-screenshot-rename` command */
   export type DryRunScreenshotRename = ExtensionPreferences & {}
-  /** Preferences accessible in the `start-screenshot-watcher` command */
-  export type StartScreenshotWatcher = ExtensionPreferences & {
-  /** Skip on Battery - When the watcher is running and the device is on battery, skip new screenshots until AC power is restored. Manual commands always run regardless of power. */
-  "skipOnBattery": boolean,
-  /** Debounce (ms) - Milliseconds of file-event quiescence the watcher waits before processing a path. Screenshot tools write temp files / re-touch the final file; this avoids racing them. */
-  "debounceMs": string,
-  /** Ignore Pattern (regex) - Optional case-insensitive regex matched against the basename. Files that match are never renamed by the watcher. The built-in date-prefix loop guard runs in addition to this. */
-  "ignorePattern": string
-}
-  /** Preferences accessible in the `stop-screenshot-watcher` command */
-  export type StopScreenshotWatcher = ExtensionPreferences & {}
-  /** Preferences accessible in the `screenshot-watcher-status` command */
-  export type ScreenshotWatcherStatus = ExtensionPreferences & {}
+  /** Preferences accessible in the `screenshot-watcher` command */
+  export type ScreenshotWatcher = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
@@ -54,11 +49,7 @@ declare namespace Arguments {
   export type RenameNewScreenshots = {}
   /** Arguments passed to the `dry-run-screenshot-rename` command */
   export type DryRunScreenshotRename = {}
-  /** Arguments passed to the `start-screenshot-watcher` command */
-  export type StartScreenshotWatcher = {}
-  /** Arguments passed to the `stop-screenshot-watcher` command */
-  export type StopScreenshotWatcher = {}
-  /** Arguments passed to the `screenshot-watcher-status` command */
-  export type ScreenshotWatcherStatus = {}
+  /** Arguments passed to the `screenshot-watcher` command */
+  export type ScreenshotWatcher = {}
 }
 

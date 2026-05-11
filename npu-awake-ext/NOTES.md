@@ -9,7 +9,8 @@ Extension-specific notes for **`npu-awake-ext`**.
 
 - **Keeper**: `keeper/AwakeKeeper.exe` (Win32) calls `SetThreadExecutionState` for:
   - `indefinite`, `timed`, `until`, `screen-off`
-- **Raycast commands**: `awake`, `awake-for`, `awake-until`, `screen-off-mode`, `let-sleep`, `awake-status`
+- **Raycast commands**: `awake`, `awake-natural` (Smart Awake), `awake-for`, `awake-until`, `let-sleep`, `awake-status` (title **Awake Dashboard** — status, shortcuts to other commands, **Stop Awake Daemon** under Advanced), `awake-schedules`
+- **Screen-off behavior:** There is no separate **Screen-Off Mode** command. Use **Awake** with command preference **Default Awake Mode → Screen-Off** (toggle matches the old screen-off command).
 - **Process model**: detached spawn + PID tracked in Raycast `LocalStorage` (see `src/utils/keeper-utils.ts`)
 
 ## Smart Awake design (planning)

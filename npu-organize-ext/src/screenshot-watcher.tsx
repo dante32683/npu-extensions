@@ -1,17 +1,6 @@
-import {
-    Action,
-    ActionPanel,
-    Color,
-    Detail,
-    Icon,
-    launchCommand,
-    LaunchType,
-    open,
-    showToast,
-    Toast,
-} from "@raycast/api"
+import { Action, ActionPanel, Color, Detail, Icon, getPreferenceValues, open, showToast, Toast } from "@raycast/api"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { getKeeperHealth, KeeperHealth } from "./utils/keeper-control"
+import { getKeeperHealth, KeeperHealth, startKeeper, stopKeeper } from "./utils/keeper-control"
 import { getPaths, readKeeperState, readLogTail, KeeperState } from "./utils/organize-state"
 
 interface ViewModel {
@@ -26,6 +15,64 @@ function buildModel(): ViewModel {
         state: readKeeperState(),
         log: readLogTail(30),
     }
+}
+
+async function runStartWithToasts(): Promise<void> {
+    const toast = await showToast({ style: Toast.Style.Animated, title: "Starting screenshot watcher..." })
+
+    const outcome = await startKeeper()
+    if (outcome.ok) {
+        const prefs = getPreferenceValues<{ showSuccessToasts?: boolean }>()
+        if (prefs.showSuccessToasts !== false) {
+            toast.style = Toast.Style.Success
+            toast.title = "Screenshot watcher started"
+            toast.message = `PID ${outcome.pid}`
+        } else {
+            await toast.hide()
+        }
+        return
+    }
+
+    toast.style = Toast.Style.Failure
+    switch (outcome.reason) {
+        case "keeper-missing":
+            toast.title = "Keeper not built"
+            toast.message =
+                "From npu-organize-ext\\keeper run: dotnet publish -c Release -r win-x64 --self-contained true -o ..\\assets\\bin"
+            break
+        case "bridge-missing":
+            toast.title = "Bridge not built"
+            toast.message =
+                "From npu-organize-ext\\bridge: dotnet publish -c Release -r win-x64 --self-contained true -o ..\\assets\\bin"
+            break
+        case "watch-folder-missing":
+            toast.title = "Screenshots folder does not exist"
+            toast.message = outcome.detail ?? ""
+            break
+        case "spawn-failed":
+            toast.title = "Failed to start watcher"
+            toast.message = outcome.detail ?? "spawn() returned no pid"
+            break
+    }
+}
+
+async function runStopWithToasts(): Promise<void> {
+    const toast = await showToast({ style: Toast.Style.Animated, title: "Stopping screenshot watcher..." })
+
+    const { stopped, pid } = await stopKeeper()
+    const prefs = getPreferenceValues<{ showSuccessToasts?: boolean }>()
+
+    if (!stopped) {
+        toast.style = Toast.Style.Success
+        toast.title = "No watcher was running"
+        if (prefs.showSuccessToasts === false) await toast.hide()
+        return
+    }
+
+    toast.style = Toast.Style.Success
+    toast.title = "Screenshot watcher stopped"
+    toast.message = pid ? `PID ${pid}` : undefined
+    if (prefs.showSuccessToasts === false) await toast.hide()
 }
 
 export default function Command() {
@@ -50,33 +97,13 @@ export default function Command() {
         return () => clearInterval(id)
     }, [refresh])
 
-    // Both Start and Stop are delegated to their dedicated commands via
-    // launchCommand so that command-scoped preferences (skipOnBattery,
-    // debounceMs, ignorePattern) are visible to the running command —
-    // Status's getPreferenceValues cannot see those.
     const handleStart = useCallback(async () => {
-        try {
-            await launchCommand({ name: "start-screenshot-watcher", type: LaunchType.UserInitiated })
-        } catch (err: unknown) {
-            await showToast({
-                style: Toast.Style.Failure,
-                title: "Failed to launch Start Screenshot Watcher",
-                message: err instanceof Error ? err.message : String(err),
-            })
-        }
+        await runStartWithToasts()
         setTimeout(() => void refresh(), 1500)
     }, [refresh])
 
     const handleStop = useCallback(async () => {
-        try {
-            await launchCommand({ name: "stop-screenshot-watcher", type: LaunchType.UserInitiated })
-        } catch (err: unknown) {
-            await showToast({
-                style: Toast.Style.Failure,
-                title: "Failed to launch Stop Screenshot Watcher",
-                message: err instanceof Error ? err.message : String(err),
-            })
-        }
+        await runStopWithToasts()
         setTimeout(() => void refresh(), 1500)
     }, [refresh])
 
@@ -86,7 +113,7 @@ export default function Command() {
     return (
         <Detail
             isLoading={isLoading}
-            navigationTitle="Screenshot Watcher Status"
+            navigationTitle="Screenshot Watcher"
             markdown={markdown}
             metadata={renderMetadata(model)}
             actions={
@@ -150,6 +177,10 @@ function renderMarkdown(model: ViewModel | null): string {
     }
 
     lines.push(`## ${health.running ? "Watcher running" : "Watcher stopped"}`)
+    lines.push("")
+    lines.push(
+        "Watcher settings (**Skip on Battery**, **Debounce**, **Ignore Pattern**) live in **Extension Preferences** and are written to `config.json` whenever you start the watcher.",
+    )
     lines.push("")
     if (state.lastError) {
         lines.push(`> **Last error:** ${state.lastError}`)

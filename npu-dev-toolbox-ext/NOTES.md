@@ -2,6 +2,8 @@
 
 This extension helps you open the “active workspace” (Explorer folder / IDE / terminal) and can generate commit messages using Phi-Silica.
 
+**Open Workspace** includes **Recent** (previously the separate **Workspace History** command): last opened folders, same open actions, per-row remove, and **Clear History**. Shared launcher helpers live in `src/utils/workspace-launcher-actions.ts`.
+
 **Roadmap §1 (suite prefs):** `package.json` includes success toasts (workspace opens + commit flow), `ensureModelReady` / `--ensure-ready` for `phi-commit`, and **Workspace Detection Timeout (ms)** for PowerShell foreground probes in `foreground-context.ts`.
 
 ## Terminal launching (Windows Terminal `wt`) — troubleshooting notes

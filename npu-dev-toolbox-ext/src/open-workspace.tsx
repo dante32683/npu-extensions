@@ -1,6 +1,8 @@
 import {
     Action,
     ActionPanel,
+    Alert,
+    confirmAlert,
     Form,
     getPreferenceValues,
     Icon,
@@ -13,72 +15,19 @@ import fs from "fs"
 import path from "path"
 import { useCallback, useEffect, useState } from "react"
 import { getLastExplorerFolder, setLastExplorerFolder } from "./utils/last-explorer-folder"
-import { pushRecentWorkspace } from "./utils/recent-workspaces"
-import { LauncherOutcome, LauncherPrefs, openAll, openInExplorer, openInIde, openInTerminal } from "./utils/launchers"
-
-type ActionKey = "ide" | "terminal" | "explorer" | "all"
-type DefaultOpenTarget = ActionKey
-
-const ACTION_LABELS: Record<ActionKey, string> = {
-    ide: "Open in IDE",
-    terminal: "Open in Terminal",
-    explorer: "Open in Explorer",
-    all: "Open All",
-}
-
-function getLauncherPrefs(): LauncherPrefs & { defaultOpenTarget: DefaultOpenTarget; showSuccessToasts?: boolean } {
-    const prefs = getPreferenceValues<Preferences.OpenWorkspace>()
-    return {
-        defaultOpenTarget: prefs.defaultOpenTarget as DefaultOpenTarget,
-        terminalChoice: prefs.terminalChoice,
-        terminalNewTab: Boolean(prefs.terminalNewTab),
-        wtProfileName: prefs.wtProfileName ?? "",
-        terminalCustomPath: prefs.terminalCustomPath ?? "",
-        ideChoice: prefs.ideChoice,
-        ideCustomPath: prefs.ideCustomPath ?? "",
-        showSuccessToasts: prefs.showSuccessToasts,
-    }
-}
-
-async function runLauncher(
-    action: ActionKey,
-    folderPath: string,
-    prefs: LauncherPrefs & { showSuccessToasts?: boolean },
-): Promise<void> {
-    const label = ACTION_LABELS[action]
-    const toast = await showToast({ style: Toast.Style.Animated, title: `${label}...` })
-
-    let outcome: LauncherOutcome
-    switch (action) {
-        case "ide":
-            outcome = openInIde(folderPath, prefs)
-            break
-        case "terminal":
-            outcome = openInTerminal(folderPath, prefs)
-            break
-        case "explorer":
-            outcome = openInExplorer(folderPath)
-            break
-        case "all":
-            outcome = openAll(folderPath, prefs)
-            break
-    }
-
-    if (outcome.ok) {
-        if (prefs.showSuccessToasts !== false) {
-            toast.style = Toast.Style.Success
-            toast.title = `${label} Started`
-            toast.message = folderPath
-        } else {
-            await toast.hide()
-        }
-        await pushRecentWorkspace(folderPath)
-    } else {
-        toast.style = Toast.Style.Failure
-        toast.title = `${label} Failed`
-        toast.message = outcome.error
-    }
-}
+import {
+    clearRecentWorkspaces,
+    getRecentWorkspaces,
+    pushRecentWorkspace,
+    removeRecentWorkspace,
+} from "./utils/recent-workspaces"
+import {
+    getWorkspaceLauncherPrefs,
+    runDefaultWorkspaceLauncher,
+    runWorkspaceLauncher,
+    WORKSPACE_ACTION_LABELS,
+    type WorkspaceLauncherPrefs,
+} from "./utils/workspace-launcher-actions"
 
 function listSubfolders(folderPath: string): string[] {
     try {
@@ -92,20 +41,13 @@ function listSubfolders(folderPath: string): string[] {
     }
 }
 
-async function runDefaultLauncher(
-    folderPath: string,
-    prefs: LauncherPrefs & { defaultOpenTarget: DefaultOpenTarget; showSuccessToasts?: boolean },
-) {
-    await runLauncher(prefs.defaultOpenTarget, folderPath, prefs)
-}
-
 function SubfolderBrowser({
     rootFolder,
     prefs,
     onMutate,
 }: {
     rootFolder: string
-    prefs: LauncherPrefs & { defaultOpenTarget: DefaultOpenTarget; showSuccessToasts?: boolean }
+    prefs: WorkspaceLauncherPrefs
     onMutate: () => void
 }) {
     const { push } = useNavigation()
@@ -126,27 +68,27 @@ function SubfolderBrowser({
                                     <Action
                                         title="Open (default)"
                                         icon={Icon.Play}
-                                        onAction={() => runDefaultLauncher(f, prefs).then(onMutate)}
+                                        onAction={() => runDefaultWorkspaceLauncher(f, prefs).then(onMutate)}
                                     />
                                     <Action
-                                        title={ACTION_LABELS.ide}
+                                        title={WORKSPACE_ACTION_LABELS.ide}
                                         icon={Icon.Code}
-                                        onAction={() => runLauncher("ide", f, prefs).then(onMutate)}
+                                        onAction={() => runWorkspaceLauncher("ide", f, prefs).then(onMutate)}
                                     />
                                     <Action
-                                        title={ACTION_LABELS.terminal}
+                                        title={WORKSPACE_ACTION_LABELS.terminal}
                                         icon={Icon.Terminal}
-                                        onAction={() => runLauncher("terminal", f, prefs).then(onMutate)}
+                                        onAction={() => runWorkspaceLauncher("terminal", f, prefs).then(onMutate)}
                                     />
                                     <Action
-                                        title={ACTION_LABELS.explorer}
+                                        title={WORKSPACE_ACTION_LABELS.explorer}
                                         icon={Icon.Folder}
-                                        onAction={() => runLauncher("explorer", f, prefs).then(onMutate)}
+                                        onAction={() => runWorkspaceLauncher("explorer", f, prefs).then(onMutate)}
                                     />
                                     <Action
-                                        title={ACTION_LABELS.all}
+                                        title={WORKSPACE_ACTION_LABELS.all}
                                         icon={Icon.Stars}
-                                        onAction={() => runLauncher("all", f, prefs).then(onMutate)}
+                                        onAction={() => runWorkspaceLauncher("all", f, prefs).then(onMutate)}
                                     />
                                 </ActionPanel.Section>
                                 <ActionPanel.Section>
@@ -218,7 +160,7 @@ function FolderPickerForm({ onPicked }: { onPicked: (folderPath: string) => void
 
 function workspaceActions(
     folderPath: string,
-    prefs: LauncherPrefs & { defaultOpenTarget: DefaultOpenTarget; showSuccessToasts?: boolean },
+    prefs: WorkspaceLauncherPrefs,
     options: { onMutate: () => void; push: ReturnType<typeof useNavigation>["push"] },
 ) {
     return (
@@ -227,27 +169,27 @@ function workspaceActions(
                 <Action
                     title="Open (default)"
                     icon={Icon.Play}
-                    onAction={() => runDefaultLauncher(folderPath, prefs).then(options.onMutate)}
+                    onAction={() => runDefaultWorkspaceLauncher(folderPath, prefs).then(options.onMutate)}
                 />
                 <Action
-                    title={ACTION_LABELS.ide}
+                    title={WORKSPACE_ACTION_LABELS.ide}
                     icon={Icon.Code}
-                    onAction={() => runLauncher("ide", folderPath, prefs).then(options.onMutate)}
+                    onAction={() => runWorkspaceLauncher("ide", folderPath, prefs).then(options.onMutate)}
                 />
                 <Action
-                    title={ACTION_LABELS.terminal}
+                    title={WORKSPACE_ACTION_LABELS.terminal}
                     icon={Icon.Terminal}
-                    onAction={() => runLauncher("terminal", folderPath, prefs).then(options.onMutate)}
+                    onAction={() => runWorkspaceLauncher("terminal", folderPath, prefs).then(options.onMutate)}
                 />
                 <Action
-                    title={ACTION_LABELS.explorer}
+                    title={WORKSPACE_ACTION_LABELS.explorer}
                     icon={Icon.Folder}
-                    onAction={() => runLauncher("explorer", folderPath, prefs).then(options.onMutate)}
+                    onAction={() => runWorkspaceLauncher("explorer", folderPath, prefs).then(options.onMutate)}
                 />
                 <Action
-                    title={ACTION_LABELS.all}
+                    title={WORKSPACE_ACTION_LABELS.all}
                     icon={Icon.Stars}
-                    onAction={() => runLauncher("all", folderPath, prefs).then(options.onMutate)}
+                    onAction={() => runWorkspaceLauncher("all", folderPath, prefs).then(options.onMutate)}
                 />
             </ActionPanel.Section>
             <ActionPanel.Section>
@@ -271,12 +213,64 @@ function workspaceActions(
     )
 }
 
+function recentWorkspaceActions(folderPath: string, prefs: WorkspaceLauncherPrefs, onMutate: () => void) {
+    return (
+        <ActionPanel>
+            <ActionPanel.Section title="Open">
+                <Action
+                    title="Open (default)"
+                    icon={Icon.Play}
+                    onAction={() => runDefaultWorkspaceLauncher(folderPath, prefs).then(onMutate)}
+                />
+                <Action
+                    title={WORKSPACE_ACTION_LABELS.ide}
+                    icon={Icon.Code}
+                    onAction={() => runWorkspaceLauncher("ide", folderPath, prefs).then(onMutate)}
+                />
+                <Action
+                    title={WORKSPACE_ACTION_LABELS.terminal}
+                    icon={Icon.Terminal}
+                    onAction={() => runWorkspaceLauncher("terminal", folderPath, prefs).then(onMutate)}
+                />
+                <Action
+                    title={WORKSPACE_ACTION_LABELS.explorer}
+                    icon={Icon.Folder}
+                    onAction={() => runWorkspaceLauncher("explorer", folderPath, prefs).then(onMutate)}
+                />
+                <Action
+                    title={WORKSPACE_ACTION_LABELS.all}
+                    icon={Icon.Stars}
+                    onAction={() => runWorkspaceLauncher("all", folderPath, prefs).then(onMutate)}
+                />
+            </ActionPanel.Section>
+            <ActionPanel.Section title="Manage">
+                <Action.CopyToClipboard
+                    title="Copy Path"
+                    content={folderPath}
+                    shortcut={{ modifiers: ["cmd"], key: "." }}
+                />
+                <Action
+                    title="Remove from History"
+                    icon={Icon.XMarkCircle}
+                    style={Action.Style.Destructive}
+                    shortcut={{ modifiers: ["cmd"], key: "d" }}
+                    onAction={async () => {
+                        await removeRecentWorkspace(folderPath)
+                        onMutate()
+                    }}
+                />
+            </ActionPanel.Section>
+        </ActionPanel>
+    )
+}
+
 export default function Command() {
-    const prefs = getLauncherPrefs()
+    const prefs = getWorkspaceLauncherPrefs()
     const { push } = useNavigation()
 
     const [currentFolder, setCurrentFolder] = useState<string | null>(null)
     const [subfolders, setSubfolders] = useState<string[]>([])
+    const [recent, setRecent] = useState<string[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
     const refresh = useCallback(async () => {
@@ -285,6 +279,7 @@ export default function Command() {
             const current = await getLastExplorerFolder()
             setCurrentFolder(current)
             setSubfolders(current ? listSubfolders(current) : [])
+            setRecent(await getRecentWorkspaces())
         } finally {
             setIsLoading(false)
         }
@@ -303,8 +298,51 @@ export default function Command() {
         [refresh],
     )
 
+    const clearHistory = async () => {
+        const ok = await confirmAlert({
+            title: "Clear Workspace History?",
+            message: "This will remove all saved workspaces from history.",
+            primaryAction: { title: "Clear", style: Alert.ActionStyle.Destructive },
+        })
+        if (!ok) return
+        await clearRecentWorkspaces()
+        await refresh()
+        const hprefs = getPreferenceValues<Preferences>()
+        if (hprefs.showSuccessToasts !== false) {
+            await showToast({ style: Toast.Style.Success, title: "History Cleared" })
+        }
+    }
+
     return (
-        <List isLoading={isLoading} searchBarPlaceholder="Filter workspaces in current folder...">
+        <List isLoading={isLoading} searchBarPlaceholder="Filter workspaces...">
+            {recent.length > 0 ? (
+                <List.Section title="Recent" subtitle={`${recent.length}`}>
+                    {recent.map(folderPath => (
+                        <List.Item
+                            key={folderPath}
+                            title={path.basename(folderPath)}
+                            subtitle={folderPath}
+                            icon={Icon.Clock}
+                            actions={recentWorkspaceActions(folderPath, prefs, refresh)}
+                        />
+                    ))}
+                    <List.Item
+                        title="Clear History"
+                        icon={Icon.Trash}
+                        actions={
+                            <ActionPanel>
+                                <Action
+                                    title="Clear History"
+                                    icon={Icon.Trash}
+                                    style={Action.Style.Destructive}
+                                    onAction={clearHistory}
+                                />
+                            </ActionPanel>
+                        }
+                    />
+                </List.Section>
+            ) : null}
+
             <List.Section title="Current Explorer Folder">
                 {currentFolder ? (
                     <List.Item

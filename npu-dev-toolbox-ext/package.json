@@ -10,13 +10,7 @@
         {
             "name": "open-workspace",
             "title": "Open Workspace",
-            "description": "Open the current Explorer folder or a subfolder workspace in Explorer, a terminal, and/or your IDE.",
-            "mode": "view"
-        },
-        {
-            "name": "workspace-history",
-            "title": "Workspace History",
-            "description": "Open and manage previously used workspaces.",
+            "description": "Open the current Explorer folder or a subfolder workspace in Explorer, a terminal, and/or your IDE. Recent workspaces appear at the top.",
             "mode": "view"
         },
         {

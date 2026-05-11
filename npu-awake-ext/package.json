@@ -129,8 +129,8 @@
     },
     {
       "name": "awake-status",
-      "title": "Awake Status",
-      "description": "Show what is keeping the PC awake right now.",
+      "title": "Awake Dashboard",
+      "description": "Current keep-awake state, shortcuts to other commands, and advanced actions (including stopping the background daemon).",
       "mode": "view"
     },
     {
@@ -138,18 +138,6 @@
       "title": "Awake Schedules",
       "description": "Manage keep-awake schedules (view, pause, delete).",
       "mode": "view"
-    },
-    {
-      "name": "stop-awake-daemon",
-      "title": "Stop Awake Daemon",
-      "description": "Stop the background Awake process (useful before rebuilding).",
-      "mode": "no-view"
-    },
-    {
-      "name": "screen-off-mode",
-      "title": "Screen-Off Mode",
-      "description": "System stays awake but display is allowed to sleep.",
-      "mode": "no-view"
     }
   ],
   "dependencies": {

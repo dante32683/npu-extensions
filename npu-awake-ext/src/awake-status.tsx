@@ -1,10 +1,21 @@
-import { List, Icon, ActionPanel, Action, Color, getPreferenceValues, showToast, Toast } from "@raycast/api"
-import { useEffect, useState } from "react"
-import { getKeeperStatus, KeeperStatus, setOverride } from "./utils/keeper-utils"
+import {
+    Action,
+    ActionPanel,
+    Color,
+    getPreferenceValues,
+    Icon,
+    launchCommand,
+    LaunchType,
+    List,
+    showToast,
+    Toast,
+} from "@raycast/api"
+import { useCallback, useEffect, useState } from "react"
+import { getKeeperStatus, KeeperStatus, setOverride, stopDaemon } from "./utils/keeper-utils"
 
 function isScheduleActiveNow(s: KeeperStatus["schedules"][number], now: Date): boolean {
     if (!s.enabled) return false
-    const dow = now.getDay() // 0=Sun..6=Sat
+    const dow = now.getDay()
     if (!s.days.includes(dow)) return false
 
     const [sh, sm] = s.start.split(":").map(n => parseInt(n, 10))
@@ -17,7 +28,7 @@ function isScheduleActiveNow(s: KeeperStatus["schedules"][number], now: Date): b
 
     if (start === end) return true
     if (start < end) return cur >= start && cur < end
-    return cur >= start || cur < end // cross-midnight
+    return cur >= start || cur < end
 }
 
 function formatDays(days: number[]) {
@@ -32,19 +43,34 @@ interface Prefs {
     showSuccessToasts?: boolean
 }
 
+async function launchNamed(name: string) {
+    try {
+        await launchCommand({ name, type: LaunchType.UserInitiated })
+    } catch (err: unknown) {
+        await showToast({
+            style: Toast.Style.Failure,
+            title: "Failed to open command",
+            message: err instanceof Error ? err.message : String(err),
+        })
+    }
+}
+
 export default function Command() {
     const prefs = getPreferenceValues<Prefs>()
     const [status, setStatus] = useState<KeeperStatus>({ daemonPid: null, override: null, schedules: [] })
     const [isLoading, setIsLoading] = useState(true)
 
-    useEffect(() => {
-        async function fetchStatus() {
-            const s = await getKeeperStatus()
-            setStatus(s)
-            setIsLoading(false)
-        }
-        fetchStatus()
+    const refresh = useCallback(async () => {
+        const s = await getKeeperStatus()
+        setStatus(s)
+        setIsLoading(false)
     }, [])
+
+    useEffect(() => {
+        void refresh()
+        const id = setInterval(() => void refresh(), 3000)
+        return () => clearInterval(id)
+    }, [refresh])
 
     const getRemainingTime = () => {
         const exp = status?.override?.expiryEpochSeconds
@@ -65,70 +91,179 @@ export default function Command() {
         daemon: "Daemon (Schedules)",
     }
 
+    const handleStopDaemon = async () => {
+        await stopDaemon()
+        await refresh()
+        if (prefs.showSuccessToasts !== false) {
+            await showToast({ style: Toast.Style.Success, title: "Awake daemon stopped" })
+        }
+    }
+
     return (
-        <List isLoading={isLoading}>
-            {status.override ? (
+        <List isLoading={isLoading} navigationTitle="Awake Dashboard">
+            <List.Section title="Current session">
+                {status.override ? (
+                    <List.Item
+                        title={`Mode: ${modeLabels[status.override.mode] || status.override.mode}`}
+                        subtitle={
+                            status.override.expiryEpochSeconds ? `Remaining: ${getRemainingTime()}` : "No time limit"
+                        }
+                        icon={{ source: Icon.Clock, tintColor: Color.Green }}
+                        actions={
+                            <ActionPanel>
+                                <Action
+                                    // eslint-disable-next-line @raycast/prefer-title-case
+                                    title="Let PC Sleep"
+                                    icon={Icon.Moon}
+                                    onAction={async () => {
+                                        await setOverride(null)
+                                        await refresh()
+                                        if (prefs.showSuccessToasts !== false) {
+                                            await showToast({
+                                                style: Toast.Style.Success,
+                                                title: "Manual keep-awake cleared",
+                                            })
+                                        }
+                                    }}
+                                />
+                            </ActionPanel>
+                        }
+                    />
+                ) : status.schedules.some(s => isScheduleActiveNow(s, new Date())) ? (
+                    <List.Item
+                        title="Awake via schedule"
+                        subtitle={(() => {
+                            const active = status.schedules.find(s => isScheduleActiveNow(s, new Date()))
+                            return active
+                                ? `${formatDays(active.days)} • ${active.start}–${active.end}`
+                                : "Schedule is active"
+                        })()}
+                        icon={{ source: Icon.Calendar, tintColor: Color.Blue }}
+                        actions={
+                            <ActionPanel>
+                                <Action
+                                    // eslint-disable-next-line @raycast/prefer-title-case
+                                    title="Let PC Sleep (Clear Manual Override)"
+                                    icon={Icon.Moon}
+                                    onAction={async () => {
+                                        await setOverride(null)
+                                        await refresh()
+                                    }}
+                                />
+                            </ActionPanel>
+                        }
+                    />
+                ) : status.schedules.length > 0 ? (
+                    <List.Item
+                        title="Schedules configured (not active right now)"
+                        subtitle={`${status.schedules.filter(s => s.enabled).length} enabled`}
+                        icon={{ source: Icon.Calendar, tintColor: Color.SecondaryText }}
+                    />
+                ) : (
+                    <List.Item
+                        title="PC can sleep normally"
+                        subtitle="No keep-awake session is active."
+                        icon={Icon.Moon}
+                    />
+                )}
+            </List.Section>
+
+            <List.Section title="Commands" subtitle="Open a Raycast command">
                 <List.Item
-                    title={`Mode: ${modeLabels[status.override.mode] || status.override.mode}`}
-                    subtitle={status.override.expiryEpochSeconds ? `Remaining: ${getRemainingTime()}` : "No time limit"}
-                    icon={{ source: Icon.Clock, tintColor: Color.Green }}
+                    title="Smart Awake"
+                    subtitle="Natural language schedules and durations"
+                    icon={Icon.Wand}
                     actions={
                         <ActionPanel>
                             <Action
-                                // eslint-disable-next-line @raycast/prefer-title-case
-                                title="Let PC Sleep"
-                                icon={Icon.Moon}
-                                onAction={async () => {
-                                    await setOverride(null)
-                                    setStatus(await getKeeperStatus())
-                                    if (prefs.showSuccessToasts !== false) {
-                                        await showToast({
-                                            style: Toast.Style.Success,
-                                            title: "Manual keep-awake cleared",
-                                        })
-                                    }
-                                }}
+                                title="Open Smart Awake"
+                                icon={Icon.Wand}
+                                onAction={() => launchNamed("awake-natural")}
                             />
                         </ActionPanel>
                     }
                 />
-            ) : status.schedules.some(s => isScheduleActiveNow(s, new Date())) ? (
                 <List.Item
-                    title="Awake via schedule"
-                    subtitle={(() => {
-                        const active = status.schedules.find(s => isScheduleActiveNow(s, new Date()))
-                        return active
-                            ? `${formatDays(active.days)} • ${active.start}–${active.end}`
-                            : "Schedule is active"
-                    })()}
-                    icon={{ source: Icon.Calendar, tintColor: Color.Blue }}
+                    title="Awake for…"
+                    subtitle="Keep awake for N minutes"
+                    icon={Icon.Clock}
                     actions={
                         <ActionPanel>
                             <Action
-                                // eslint-disable-next-line @raycast/prefer-title-case
-                                title="Let PC Sleep (Clear Manual Override)"
-                                icon={Icon.Moon}
-                                onAction={async () => {
-                                    await setOverride(null)
-                                    setStatus(await getKeeperStatus())
-                                }}
+                                title="Open Awake For…"
+                                icon={Icon.Clock}
+                                onAction={() => launchNamed("awake-for")}
                             />
                         </ActionPanel>
                     }
                 />
-            ) : status.schedules.length > 0 ? (
                 <List.Item
-                    title="Schedules configured (not active right now)"
-                    subtitle={`${status.schedules.filter(s => s.enabled).length} enabled`}
-                    icon={{ source: Icon.Calendar, tintColor: Color.SecondaryText }}
+                    title="Awake Until"
+                    subtitle="Keep awake until a time"
+                    icon={Icon.Calendar}
+                    actions={
+                        <ActionPanel>
+                            <Action
+                                title="Open Awake Until"
+                                icon={Icon.Calendar}
+                                onAction={() => launchNamed("awake-until")}
+                            />
+                        </ActionPanel>
+                    }
                 />
-            ) : (
-                <List.EmptyView
-                    title="PC can sleep normally"
-                    description="No keep-awake session is active."
+                <List.Item
+                    title="Awake Schedules"
+                    subtitle="View, pause, or delete schedules"
+                    icon={Icon.List}
+                    actions={
+                        <ActionPanel>
+                            <Action
+                                title="Open Awake Schedules"
+                                icon={Icon.List}
+                                onAction={() => launchNamed("awake-schedules")}
+                            />
+                        </ActionPanel>
+                    }
+                />
+                <List.Item
+                    title="Awake"
+                    subtitle="Toggle keep-awake (uses Default Awake Mode in command preferences)"
+                    icon={Icon.Power}
+                    actions={
+                        <ActionPanel>
+                            <Action title="Run Awake Toggle" icon={Icon.Power} onAction={() => launchNamed("awake")} />
+                        </ActionPanel>
+                    }
+                />
+                <List.Item
+                    title="Let Sleep"
+                    subtitle="Cancel the active keep-awake session"
                     icon={Icon.Moon}
+                    actions={
+                        <ActionPanel>
+                            <Action title="Run Let Sleep" icon={Icon.Moon} onAction={() => launchNamed("let-sleep")} />
+                        </ActionPanel>
+                    }
                 />
-            )}
+            </List.Section>
+
+            <List.Section title="Advanced">
+                <List.Item
+                    title="Stop Awake Daemon"
+                    subtitle="Stops the background process (use before rebuilding the keeper)"
+                    icon={{ source: Icon.Stop, tintColor: Color.Red }}
+                    actions={
+                        <ActionPanel>
+                            <Action
+                                title="Stop Awake Daemon"
+                                icon={{ source: Icon.Stop, tintColor: Color.Red }}
+                                style={Action.Style.Destructive}
+                                onAction={handleStopDaemon}
+                            />
+                        </ActionPanel>
+                    }
+                />
+            </List.Section>
         </List>
     )
 }

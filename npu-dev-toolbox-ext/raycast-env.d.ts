@@ -36,8 +36,6 @@ declare type Preferences = ExtensionPreferences
 declare namespace Preferences {
   /** Preferences accessible in the `open-workspace` command */
   export type OpenWorkspace = ExtensionPreferences & {}
-  /** Preferences accessible in the `workspace-history` command */
-  export type WorkspaceHistory = ExtensionPreferences & {}
   /** Preferences accessible in the `commit-message` command */
   export type CommitMessage = ExtensionPreferences & {
   /** Commit Style - Default commit message style for the Commit Message command. */
@@ -48,8 +46,6 @@ declare namespace Preferences {
 declare namespace Arguments {
   /** Arguments passed to the `open-workspace` command */
   export type OpenWorkspace = {}
-  /** Arguments passed to the `workspace-history` command */
-  export type WorkspaceHistory = {}
   /** Arguments passed to the `commit-message` command */
   export type CommitMessage = {
   /** optional repo path */

@@ -50,10 +50,6 @@ declare namespace Preferences {
   export type AwakeStatus = ExtensionPreferences & {}
   /** Preferences accessible in the `awake-schedules` command */
   export type AwakeSchedules = ExtensionPreferences & {}
-  /** Preferences accessible in the `stop-awake-daemon` command */
-  export type StopAwakeDaemon = ExtensionPreferences & {}
-  /** Preferences accessible in the `screen-off-mode` command */
-  export type ScreenOffMode = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
@@ -80,9 +76,5 @@ declare namespace Arguments {
   export type AwakeStatus = {}
   /** Arguments passed to the `awake-schedules` command */
   export type AwakeSchedules = {}
-  /** Arguments passed to the `stop-awake-daemon` command */
-  export type StopAwakeDaemon = {}
-  /** Arguments passed to the `screen-off-mode` command */
-  export type ScreenOffMode = {}
 }
 

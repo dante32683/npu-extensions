@@ -8,7 +8,7 @@ Extension-specific detail for **`npu-organize-ext`**. Suite workflow: **`CONTRIB
 |-------|--------|-------|
 | 0 — Bridge spike + TS dry-run | ✅ | `screenshot-title` argv on the bridge; `Dry Run Screenshot Rename` Raycast command. |
 | 1 — Manual rename + sanitizer + collisions + prefs | ✅ | `Rename New Screenshots` command, deterministic slug + fallback hash, `-2/-3` collision resolver, prefs in `package.json`. |
-| 2 — Resident watcher (`FileSystemWatcher` companion, battery skip, debounce, backlog cursor) | ✅ | `OrganizeKeeper.exe`, `Start/Stop/Status` commands, `%LocalAppData%\NpuOrganize\` state + log + config + stop.flag, hot-reload on config change, parity-checked slug logic. |
+| 2 — Resident watcher (`FileSystemWatcher` companion, battery skip, debounce, backlog cursor) | ✅ | `OrganizeKeeper.exe`, **`Screenshot Watcher`** hub command (`screenshot-watcher`), `%LocalAppData%\NpuOrganize\` state + log + config + stop.flag, hot-reload on config change, parity-checked slug logic. |
 | 3 — Polish (multi-folder, monthly subfolders, telemetry) | ⏳ Roadmap §6.5 / §9 | Not in this extension yet. |
 
 ## Structure
@@ -16,6 +16,7 @@ Extension-specific detail for **`npu-organize-ext`**. Suite workflow: **`CONTRIB
 - `src/`
   - `rename-new-screenshots.tsx` — thin entrypoint that mounts the shared list in rename mode.
   - `dry-run-screenshot-rename.tsx` — same list in read-only mode.
+  - `screenshot-watcher.tsx` — watcher hub: status + log + Start / Stop (calls `startKeeper` / `stopKeeper` directly).
   - `shared/screenshot-list.tsx` — `<List>` UI; sequentially calls `planRename` per candidate, supports per-row and batch rename with confirmation.
   - `utils/slug.ts` — pure title→slug pipeline (lowercase, allowlist `[a-z0-9-]`, token cap, length cap, fallback hash). Imported by tests; no Node/Raycast imports.
   - `utils/slug.test.ts` — Vitest suite (`npm run test`).
@@ -61,9 +62,7 @@ State lives outside the Raycast support folder so the keeper survives Raycast re
 └── organize.log      append-only audit trail (no rotation in v1)
 ```
 
-- **Start Screenshot Watcher** — writes `config.json` from current prefs, spawns `OrganizeKeeper.exe watch` detached (`stdio: 'ignore'`, `windowsHide`), persists the PID in `LocalStorage` under `organize:keeperPid`.
-- **Stop Screenshot Watcher** — writes `stop.flag`, waits up to 3s for graceful exit, falls back to `process.kill(pid)`.
-- **Screenshot Watcher Status** — `<Detail>` view: status + PID + counters + last activity timestamps + tail of `organize.log`. Live-refreshes every 2s. Start/Stop buttons delegate to the dedicated commands via `launchCommand` (necessary because `skipOnBattery` / `debounceMs` / `ignorePattern` are scoped to **Start Screenshot Watcher** and aren't visible from Status's `getPreferenceValues`). To apply pref changes while the watcher is running, re-run **Start Screenshot Watcher** — `startKeeper()` always rewrites `config.json`, and the keeper hot-reloads on mtime change.
+- **Screenshot Watcher** — single `<Detail>` hub: status + PID + counters + last activity + tail of `organize.log`; **Start** / **Stop** call `startKeeper()` / `stopKeeper()` directly (same toasts as the old no-view commands). Live-refreshes every 2s. **Watcher preferences** (`skipOnBattery`, `debounceMs`, `ignorePattern`) live at **extension** level (labeled “Watcher: …” in Raycast settings) so `resolvePreferences()` / `startKeeper()` always see the same values. To apply pref changes while the watcher is running, press **Start Watcher** again (or restart from the action) — `startKeeper()` always rewrites `config.json`, and the keeper hot-reloads on mtime change.
 - **Battery skip:** when the `skipOnBattery` pref is on (default) and `GetSystemPowerStatus` reports the device is on battery, the keeper logs `skip ... (on battery)` instead of renaming. Manual Raycast commands always run regardless of power (user has explicit agency).
 - **Debounce:** every file event resets the per-path timer; only fires `debounceMs` (default 1500) after the last event. This handles screenshot writers that touch the same file multiple times.
 - **Backlog cursor:** the manual `Rename New Screenshots` command updates `state.json` (`lastProcessedAt`, `lastProcessedPath`, `processed`) every time it renames, so the keeper status view shows a unified counter regardless of which entry point did the work.
