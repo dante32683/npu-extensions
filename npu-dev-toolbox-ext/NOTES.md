@@ -51,3 +51,13 @@ This prevents "detection block" when unrelated folders (like screenshots) are fo
     - Workdir is passed via `-d "path"`.
     - New tabs use the `new-tab` subcommand.
 - **IDE Detection**: Uses `describeSource` to label where the path came from (e.g., "VS Code", "Cursor").
+
+### Stray CMD window when using **Open in IDE** (fixed 2026-05-11)
+
+- **Cause:** `cmd.exe /c start …` was spawned with **`detached: true`** and **`windowsHide: true`**. On Windows, **`windowsHide` is unreliable when `detached` is `true`** ([nodejs/node#21825](https://github.com/nodejs/node/issues/21825)), so the helper console could stay visible even though the IDE also launched.
+- **Fix:** Short-lived `cmd` helpers (`runHiddenCmdOnce`) use **`detached: false`** + **`windowsHide: true`** + **`unref()`**. Direct **`.exe`** IDE launches use **`windowsHide: false`** so Electron is not started with **`CREATE_NO_WINDOW`**. One-shot **PowerShell** for `.lnk` shortcuts uses the same **`detached: false`** pattern.
+
+### **Open in Explorer** did nothing but the toast succeeded (fixed 2026-05-11)
+
+- **Cause:** Passing the folder path as the child process **`cwd`** could make **`CreateProcess` / `spawn` fail** on some paths (UNC, permissions) while failure surfaced only as an async **`error`** event — the extension still treated the launch as OK.
+- **Fix:** Do **not** set **`cwd`** for `explorer.exe`; pass a **normalized** path only as the argument (`path.normalize`, forward slashes → backslashes, strip a trailing `\` except on drive roots like `C:\`). See `folderPathForExplorerShell` in `launchers.ts`.

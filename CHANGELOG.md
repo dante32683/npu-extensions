@@ -26,6 +26,8 @@ All notable changes to this suite are documented here. The format follows [Keep 
 
 ### Fixed
 
+- **NPU Dev Toolbox (`npu-dev-toolbox-ext`):** **Open in IDE** no longer leaves a visible **CMD** window beside the editor: the `cmd /c start …` helper used for `.cmd` / PATH launchers now runs with **`detached: false`** so **`windowsHide` actually hides the console** (Node quirk: `windowsHide` + `detached: true` is unreliable on Windows — [nodejs/node#21825](https://github.com/nodejs/node/issues/21825)). Direct **IDE `.exe`** spawns use **`windowsHide: false`** so Electron is not started with **`CREATE_NO_WINDOW`**. **Open in Explorer** no longer passes the target folder as the child process **`cwd`** (that could make **`explorer.exe`** fail asynchronously on some paths while the UI still reported success); the folder argument is **normalized** (backslashes, trailing `\` stripped except on drive roots).
+
 - **NPU Text Tools:** **Core fix:** helper no longer sends **Ctrl+C/Ctrl+V** after the focus poll times out while Raycast is still foreground (that always copied nothing). It now **returns exit 2** with a clear stderr line, tries **AttachThreadInput + SetForegroundWindow** on the **z-order window below** Raycast, then re-checks. **`npm run test`** / **`npm run test:dotnet`** added. **Paste** success uses a **new** toast (hidden Phi toast was mutating wrong UI).
 - **NPU Text Tools (selection):** After **`closeMainWindow`**, capture uses **`getSelectedText()`** first (Raycast API — avoids SendKeys/Ctrl+C when supported on Windows). Broadened **`RaycastDetector`** (paths / lowercase process names) for helper focus polling.
 

@@ -225,6 +225,20 @@ Where this is implemented:
 
 - `npu-dev-toolbox-ext/src/utils/launchers.ts` (Windows Terminal invocation and validation logic)
 
+### Dev Toolbox — Explorer / IDE child processes (`spawn`)
+
+Symptoms:
+
+- **Open in IDE** opens the editor but a **CMD** window stays open.
+- **Open in Explorer** appears to do nothing even though the success toast fired.
+
+Causes and fixes (implemented in `npu-dev-toolbox-ext/src/utils/launchers.ts`):
+
+- **Stray CMD:** `child_process.spawn("cmd.exe", …, { detached: true, windowsHide: true })` — on Windows, **`windowsHide` is often ignored when `detached` is `true`** ([nodejs/node#21825](https://github.com/nodejs/node/issues/21825)). Use **`detached: false`** for the short `cmd /c start …` helper (still **`unref()`** so Raycast does not wait), keep **`windowsHide: true`**. For **GUI IDE `.exe`** files, prefer **`windowsHide: false`** so Electron is not created with **`CREATE_NO_WINDOW`**.
+- **Explorer no-op:** Avoid using the **target folder** as the child’s **`cwd`** when spawning **`explorer.exe`**; use the folder **only as the argument**, and **normalize** the string (backslashes, trim trailing `\` except drive roots). Otherwise **`spawn` can fail asynchronously** while the synchronous path still reports success.
+
+Extension-local detail: **`npu-dev-toolbox-ext/NOTES.md`** (Terminal & IDE Launching).
+
 ### NPU Notes — App Content Index (`AppContentIndexer`, planned)
 
 Semantic note search / related-notes may move from **Phi per-candidate classification** to **Windows App SDK App Content Search** (`AppContentIndexer`: local semantic + lexical index, official RAG retrieval pattern). That work is **specified** in **`FEATURE_PLAN.md` §10 “Implementation audit & AppContentIndexer integration”** (including sparse-bridge feasibility spike, capability gating, and fallback ladder).

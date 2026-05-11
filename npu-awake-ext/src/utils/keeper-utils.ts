@@ -92,6 +92,7 @@ export async function ensureDaemonRunning(): Promise<number | null> {
     const child = spawn(binPath, args, {
         detached: true,
         stdio: "ignore",
+        windowsHide: true,
     })
 
     if (child.pid) {

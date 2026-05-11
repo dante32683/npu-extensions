@@ -76,14 +76,15 @@ function ensureCommandOrPath(commandOrPath: string, label: string): LauncherOutc
     return { ok: true }
 }
 
-function fireAndForget(command: string, args: string[], cwd?: string): LauncherOutcome {
+function fireAndForget(command: string, args: string[], cwd?: string, windowsHide = true): LauncherOutcome {
     try {
         const child = spawn(command, args, {
             cwd,
             detached: true,
             stdio: "ignore",
-            // Avoid flashing a console window (notably when launching via `cmd.exe /c start ...`).
-            windowsHide: true,
+            // For terminal apps, we MUST set this to false, otherwise the window is invisible.
+            // For background helper commands, we set it to true to avoid flashing a console.
+            windowsHide,
         })
         child.on("error", err => console.error(`[launchers] spawn error for ${command}:`, err))
         child.unref()
@@ -93,19 +94,73 @@ function fireAndForget(command: string, args: string[], cwd?: string): LauncherO
     }
 }
 
+/**
+ * Runs `cmd.exe /c ...` hidden and exits immediately after `start` returns.
+ * Must use detached:false: with detached:true, windowsHide is unreliable on Windows and a
+ * console window can stay visible (nodejs/node#21825) — exactly the stray CMD users see
+ * when opening an IDE via `start`.
+ */
+function runHiddenCmdOnce(args: string[], cwd?: string): LauncherOutcome {
+    try {
+        const child = spawn("cmd.exe", args, {
+            cwd,
+            detached: false,
+            stdio: "ignore",
+            windowsHide: true,
+        })
+        child.on("error", err => console.error(`[launchers] spawn error for cmd.exe:`, err))
+        child.unref()
+        return { ok: true }
+    } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+}
+
+/** Short hidden PowerShell for .lnk / one-shot helpers (same detached:false rationale as cmd). */
+function runHiddenPowerShellOnce(args: string[], cwd?: string): LauncherOutcome {
+    try {
+        const child = spawn("powershell.exe", args, {
+            cwd,
+            detached: false,
+            stdio: "ignore",
+            windowsHide: true,
+        })
+        child.on("error", err => console.error(`[launchers] spawn error for powershell.exe:`, err))
+        child.unref()
+        return { ok: true }
+    } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+}
+
 // `start "" /D "<cwd>" "<exe>" <args...>` is the canonical Windows incantation for
 // firing a GUI app detached with a working directory. It also handles .lnk / .cmd / .bat.
-function startViaCmd(exePath: string, args: string[], cwd: string): LauncherOutcome {
-    const startArgs = ["/c", "start", "", "/D", cwd, exePath, ...args]
-    return fireAndForget("cmd.exe", startArgs, cwd)
+// Use `silent = true` (adds /B) to avoid flashing a console window for script-based launchers.
+function startViaCmd(exePath: string, args: string[], cwd: string, silent = true): LauncherOutcome {
+    const startArgs = ["/c", "start", "", "/D", cwd]
+    if (silent) startArgs.push("/B")
+    startArgs.push(exePath, ...args)
+    return runHiddenCmdOnce(startArgs, cwd)
 }
 
 // ---------- Explorer ----------
 
+/** Explorer is picky about separators; avoid passing this path as `cwd` (can break UNC / some hosts). */
+function folderPathForExplorerShell(folderPath: string): string {
+    let p = path.normalize(folderPath).replace(/\//g, "\\")
+    // Trailing backslash after a folder name can confuse `explorer.exe` (opens wrong / no UI).
+    if (p.length > 3 && /\\$/.test(p)) p = p.replace(/\\+$/, "")
+    return p
+}
+
 export function openInExplorer(folderPath: string): LauncherOutcome {
     const dir = ensureDirectory(folderPath)
     if (!dir.ok) return dir
-    return fireAndForget("explorer.exe", [folderPath])
+    const target = folderPathForExplorerShell(folderPath)
+    // Do not set `cwd` to the target folder: Raycast/Windows can reject that as the child cwd while the path
+    // is still valid to open, which then fails asynchronously (toast still "succeeded").
+    // Explorer is a GUI app; windowsHide must be false.
+    return fireAndForget("explorer.exe", [target], undefined, false)
 }
 
 // ---------- Terminal ----------
@@ -155,7 +210,8 @@ export function openInTerminal(folderPath: string, prefs: LauncherPrefs): Launch
             const args = [...windowArgs, "new-tab", ...profileArgs, "-d", folderPath]
 
             // Launch Windows Terminal directly (not via `cmd.exe start`) to avoid inheriting legacy console behavior.
-            return fireAndForget(wtCommand, args, folderPath)
+            // We set windowsHide to false even for WT, although as a GUI app it usually handles its own visibility.
+            return fireAndForget(wtCommand, args, folderPath, false)
         }
         case "pwsh":
             if (!commandExistsOnPath("pwsh.exe")) {
@@ -164,21 +220,23 @@ export function openInTerminal(folderPath: string, prefs: LauncherPrefs): Launch
                     error: "PowerShell 7 (pwsh) not found on PATH. Install it or switch Terminal preference.",
                 }
             }
-            return fireAndForget("pwsh.exe", [
-                "-NoExit",
-                "-Command",
-                `Set-Location -LiteralPath '${folderPath.replace(/'/g, "''")}'`,
-            ])
+            return fireAndForget(
+                "pwsh.exe",
+                ["-NoExit", "-Command", `Set-Location -LiteralPath '${folderPath.replace(/'/g, "''")}'`],
+                folderPath,
+                false,
+            )
         case "powershell":
-            return fireAndForget("powershell.exe", [
-                "-NoExit",
-                "-Command",
-                `Set-Location -LiteralPath '${folderPath.replace(/'/g, "''")}'`,
-            ])
+            return fireAndForget(
+                "powershell.exe",
+                ["-NoExit", "-Command", `Set-Location -LiteralPath '${folderPath.replace(/'/g, "''")}'`],
+                folderPath,
+                false,
+            )
         case "cmd":
-            return fireAndForget("cmd.exe", ["/K", "cd", "/d", folderPath])
+            return fireAndForget("cmd.exe", ["/K", "cd", "/d", folderPath], folderPath, false)
         case "custom":
-            return launchCustomExeOrLnk(prefs.terminalCustomPath, folderPath, "Terminal Custom Path")
+            return launchCustomExeOrLnk(prefs.terminalCustomPath, folderPath, "Terminal Custom Path", false)
     }
 }
 
@@ -262,14 +320,20 @@ export function openInIde(folderPath: string, prefs: LauncherPrefs): LauncherOut
     if (!dir.ok) return dir
 
     if (prefs.ideChoice === "custom") {
-        return launchCustomExeOrLnk(prefs.ideCustomPath, folderPath, "IDE Custom Path")
+        return launchCustomExeOrLnk(prefs.ideCustomPath, folderPath, "IDE Custom Path", true)
     }
 
     // Prefer well-known install locations because we can verify the file actually exists.
     const candidates = KNOWN_IDE_LAUNCHERS[prefs.ideChoice] ?? []
     const resolved = findExistingPath(candidates)
     if (resolved) {
-        return startViaCmd(resolved, [folderPath], folderPath)
+        // If it's a .exe, launch it directly to avoid any CMD window flash.
+        // If it's a .cmd/.bat, startViaCmd handles it with /B to be silent.
+        if (resolved.toLowerCase().endsWith(".exe")) {
+            // GUI Electron apps: windowsHide:true applies CREATE_NO_WINDOW and can leave a stray console.
+            return fireAndForget(resolved, [folderPath], folderPath, false)
+        }
+        return startViaCmd(resolved, [folderPath], folderPath, true)
     }
 
     // Fall back to the documented launcher command on PATH (e.g. `code`, `cursor`).
@@ -281,12 +345,18 @@ export function openInIde(folderPath: string, prefs: LauncherPrefs): LauncherOut
             error: `Can't find ${label} launcher on PATH. Either install the ${label} CLI launcher, or set IDE to "Custom Path" in extension preferences.`,
         }
     }
-    return startViaCmd(cmdName, [folderPath], folderPath)
+    // Command on PATH might be a script, use startViaCmd with /B for safety.
+    return startViaCmd(cmdName, [folderPath], folderPath, true)
 }
 
 // ---------- Custom .exe / .lnk ----------
 
-function launchCustomExeOrLnk(customPath: string, folderPath: string, label: string): LauncherOutcome {
+function launchCustomExeOrLnk(
+    customPath: string,
+    folderPath: string,
+    label: string,
+    windowsHide: boolean,
+): LauncherOutcome {
     const check = ensureFile(customPath, label)
     if (!check.ok) return check
 
@@ -294,9 +364,17 @@ function launchCustomExeOrLnk(customPath: string, folderPath: string, label: str
     if (ext === ".lnk") {
         // Shortcuts can't reliably accept args; just invoke the shortcut and set its working dir to the folder.
         const psCmd = `Start-Process -FilePath '${customPath.replace(/'/g, "''")}' -WorkingDirectory '${folderPath.replace(/'/g, "''")}'`
-        return fireAndForget("powershell.exe", ["-NoProfile", "-Command", psCmd])
+        // For .lnk, we always hide the powershell process that starts it.
+        return runHiddenPowerShellOnce(["-NoProfile", "-Command", psCmd], folderPath)
     }
-    return startViaCmd(customPath, [folderPath], folderPath)
+
+    if (ext === ".exe") {
+        return fireAndForget(customPath, [folderPath], folderPath, false)
+    }
+
+    // If windowsHide is true (IDE), we want it silent (/B).
+    // If windowsHide is false (Terminal), we want it non-silent.
+    return startViaCmd(customPath, [folderPath], folderPath, windowsHide)
 }
 
 // ---------- Open All ----------

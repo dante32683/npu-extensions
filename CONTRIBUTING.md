@@ -23,6 +23,7 @@ Optional: `COPILOT_CONTEXT.md`, `NPU_INFO.md` (if present in your clone), root `
 - `npu-text-tools-ext/NOTES.md` — Phi rewrite bridge; cross-links `FEATURE_PLAN.md` §3.
 - `npu-notes-ext/NOTES.md` — scaffold / future phi-note.
 - `npu-awake-ext/NOTES.md` — keeper helper vs sparse bridge distinction.
+- `npu-dev-toolbox-ext/NOTES.md` — workspace open actions (`launchers.ts`), `wt.exe` quirks, foreground detection, `phi-commit` / LAF.
 
 ### Vendor stub files (Cursor, Claude Code, Gemini CLI, etc.)
 

@@ -18,9 +18,20 @@ export type GitContext = {
 }
 
 async function runGit(cwd: string, args: string[], opts?: { maxBuffer?: number }): Promise<GitOutcome<string>> {
+    // Sanitize environment to avoid Git for Windows (MSYS2) locale warnings.
+    // Complex Windows locale strings (e.g. BCP-47 with extensions) can confuse /usr/bin/sh.
+    const env = { ...process.env }
+    if (env.LC_ALL && (env.LC_ALL.includes("-u-") || env.LC_ALL.length > 32)) {
+        delete env.LC_ALL
+    }
+    if (env.LANG && (env.LANG.includes("-u-") || env.LANG.length > 32)) {
+        delete env.LANG
+    }
+
     try {
         const { stdout } = await execFileAsync("git", args, {
             cwd,
+            env,
             windowsHide: true,
             maxBuffer: opts?.maxBuffer ?? 10 * 1024 * 1024,
         })
