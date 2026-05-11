@@ -19,6 +19,7 @@ Do **not** assume every extension uses a C# bridge: some use only TypeScript; ot
 | Document | Purpose |
 |----------|---------|
 | [**`CONTRIBUTING.md`**](CONTRIBUTING.md) | Workflow, quick start, where to log changes |
+| [**`docs/SUITE_STYLE_GUIDE.md`**](docs/SUITE_STYLE_GUIDE.md) | **Toasts, UI copy, action ordering, error-result patterns** (load this before editing Raycast strings) |
 | [**`FEATURE_PLAN.md`**](FEATURE_PLAN.md) | **Primary planning database** — roadmap & per-feature history |
 | [**`EXTENSION_REGISTRY.md`**](EXTENSION_REGISTRY.md) | Bridges, sparse identities, conventions |
 | [**`docs/RUNBOOK.md`**](docs/RUNBOOK.md) | Technical patterns & troubleshooting |

@@ -1,10 +1,10 @@
 # Feature Plan
 
-> **Historical planning database (large):** This file retains **full specs, long narratives, suite-wide conventions, and dated / struck-through lessons**. **Do not permanently delete historical content**—strike through and date superseded parts, or move tiny redundant fragments into **`CHANGELOG.md`** / **`docs/RUNBOOK.md`** only when they’re fully captured elsewhere.
+> **Historical planning database (large):** This file retains **full specs, long narratives, and dated / struck-through lessons**. **Suite-wide UI / toast / code-style norms** live in [`docs/SUITE_STYLE_GUIDE.md`](docs/SUITE_STYLE_GUIDE.md). **Do not permanently delete historical content**—strike through and date superseded parts, or move tiny redundant fragments into **`CHANGELOG.md`** / **`docs/RUNBOOK.md`** only when they’re fully captured elsewhere.
 >
 > **Active “what we’re building next” (clean summary):** [`docs/FORWARD_ROADMAP.md`](docs/FORWARD_ROADMAP.md) — consolidated forward work (notes indexer/RAG, text hotkeys, bridge alignment, `TextRewriter`, etc.). Prefer that doc for day-to-day scope; use **this** file for depth and archaeology.
 >
-> **Where else to look:** **Contributor workflow & logging:** [`CONTRIBUTING.md`](CONTRIBUTING.md). **Factual wiring** (bridges, sparse `Identity` names): [`EXTENSION_REGISTRY.md`](EXTENSION_REGISTRY.md). **Technical depth & troubleshooting:** [`docs/RUNBOOK.md`](docs/RUNBOOK.md). **Release summary:** [`CHANGELOG.md`](CHANGELOG.md). **Per-extension notes:** `<extension>/NOTES.md`. The repo files `CLAUDE.md`, `AGENTS.md`, and `GEMINI.md` are **stubs** that point at the same hub for different AI products.
+> **Where else to look:** **Contributor workflow & logging:** [`CONTRIBUTING.md`](CONTRIBUTING.md). **UI copy, toasts, and code hygiene (canonical):** [`docs/SUITE_STYLE_GUIDE.md`](docs/SUITE_STYLE_GUIDE.md). **Factual wiring** (bridges, sparse `Identity` names): [`EXTENSION_REGISTRY.md`](EXTENSION_REGISTRY.md). **Technical depth & troubleshooting:** [`docs/RUNBOOK.md`](docs/RUNBOOK.md). **Release summary:** [`CHANGELOG.md`](CHANGELOG.md). **Per-extension notes:** `<extension>/NOTES.md`. The repo files `CLAUDE.md`, `AGENTS.md`, and `GEMINI.md` are **stubs** that point at the same hub for different AI products.
 >
 > *(Earlier pointer: technical patterns were also summarized in long-form `CLAUDE.md`; that content now lives in **`docs/RUNBOOK.md`**.)*
 
@@ -600,7 +600,7 @@ TS side re-encodes the PNG to WebP via Jimp and writes final `_sticker.webp`.
 8. **Bridge spawn invariants (already canonized in `EXTENSION_REGISTRY.md` / `docs/RUNBOOK.md`).**
    - `cwd: path.dirname(BRIDGE_PATH)`, `windowsHide: true`, `--self-contained true`. Every NPU command in the suite uses the same `runNpuCommand`-style helper. Sticker Maker should call **the same** helper (currently inline in `modify-image.tsx`); extract it to `src/utils/run-npu-command.ts` and use it from `make-sticker.tsx`, `super-resolution.tsx`, `remove-background.tsx`, and `extract-text.tsx`. DRY.
 9. **First-run model download is 30–60s — message must match the suite template.**
-   - Use the standardized animated toast: `title: "Running NPU Make Sticker..."`, `message: "First run may take a moment to prepare the NPU model."` (matches `super-resolution.tsx` and the Phi-Silica bridges). See **§ Suite UX conventions** below for the canonical strings.
+   - Use the standardized animated toast: `title: "Running NPU Make Sticker..."`, `message: "First run may take a moment to prepare the NPU model."` (matches `super-resolution.tsx` and the Phi-Silica bridges). See **`docs/SUITE_STYLE_GUIDE.md`** for the canonical strings.
 10. **Output suffix must avoid the existing namespace.**
     - Already taken: `_no_bg.png` (Remove Background), `_2x.<ext>` / `_4x.<ext>` (Super Resolution), `_converted.<ext>` (Modify Image convert), `_optimized.<ext>`, `_flipped.<ext>`, `_rotated.<ext>`, `_padded.<ext>`, `_resized.<ext>`, `_scaled.<ext>`, `_no_exif.<ext>`. The plan’s `_sticker_raw.png` (intermediate) and `_sticker.webp` (final) are clear. Delete the intermediate in a `finally` block so failed runs don’t leave `_sticker_raw.png` on disk.
 11. **Big images blow up NPU memory before the documented 4000 px ceiling.**
@@ -654,7 +654,7 @@ The toolbox ships **three** Raycast commands and one shared sparse-package bridg
 
 ### Launchers contract (`src/utils/launchers.ts`)
 
-Three pure functions, each returns `{ ok: true } | { ok: false, error }`. They never throw; the UI layer translates errors into `Toast.Style.Failure` per § Suite UX conventions.
+Three pure functions, each returns `{ ok: true } | { ok: false, error }`. They never throw; the UI layer translates errors into `Toast.Style.Failure` per **`docs/SUITE_STYLE_GUIDE.md`**.
 
 - `openInExplorer(folderPath)` — `spawn("explorer.exe", [folderPath])`, detached + unref'd.
 - `openInTerminal(folderPath, prefs)`:
@@ -681,7 +681,7 @@ Generates a high-quality commit message for the repo the user is *currently work
       - If `Code.exe` / `Cursor.exe` / `WindsurfNext.exe` (any Electron VS Code fork) → parse `MainWindowTitle` (format: `<file> - <folder> - <appname>`) and verify the folder against `%APPDATA%\Code\storage.json` (or `%APPDATA%\Cursor\storage.json`) `windowsState.lastActiveWindow.folder` / `openedPathsList.workspaces3`.
       - If `explorer.exe` → reuse the existing `Shell.Application` `Windows()` enumerator (already in `npu-image-editor-ext/src/utils/powershell-utils.ts`) but read `LocationURL` instead of `SelectedItems()`.
    3. **Last-resort fallback:** Raycast directory picker (`Form.FilePicker` with `canChooseDirectories: true`).
-4. Validate the resolved path is a git working tree (`git rev-parse --show-toplevel`). If not, surface the standard error toast (see § Suite UX conventions).
+4. Validate the resolved path is a git working tree (`git rev-parse --show-toplevel`). If not, surface the standard error toast (see **`docs/SUITE_STYLE_GUIDE.md`**).
 5. Run `git status --porcelain=v1`, `git diff --staged`, `git diff`, `git log -n 5 --pretty=%s`, `git rev-parse --abbrev-ref HEAD` in the repo root.
    - If `--staged` has content, prefer it. Else use unstaged. Else: success toast saying *“No changes to commit.”* (treated as success, not error.)
 6. Truncate diff if `>` `MAX_DIFF_BYTES` (constant: `100_000`). Truncation strategy: keep every file’s `diff --git` header + its first `MAX_HUNKS_PER_FILE` (constant: `4`) hunks; append `... (truncated N hunks)`.
@@ -1327,7 +1327,7 @@ Either way: **stdout remains one JSON line**; **`cwd`** rule unchanged; update *
 
 **Failure UX**
 
-- Match **§ Suite UX conventions** where Raycast is involved; tray notifications use **plain ASCII**, short Title Case titles, **no emoji** (parity with toast rules).
+- Match **`docs/SUITE_STYLE_GUIDE.md`** where Raycast is involved; tray notifications use **plain ASCII**, short Title Case titles, **no emoji** (parity with toast rules).
 
 ### Implementation phases
 
@@ -1360,81 +1360,9 @@ Either way: **stdout remains one JSON line**; **`cwd`** rule unchanged; update *
 
 ---
 
-## Suite UX conventions (canonical reference for all extensions)
+## Suite UX conventions
 
-> **Why this section exists:** Toast strings, error templates, and action labels were drifting between extensions during the v1 build-out. New features (Sticker Maker, Dev Toolbox, Semantic Linking) **must** match these conventions. Existing extensions that don’t match are tracked as cleanup follow-ups (see § Cleanup follow-ups).
-
-### Capitalization
-
-- **Toast titles:** Title Case (e.g., `Upscaling Complete`, `Note Saved`).
-- **Toast messages:** Sentence case ending in a period (e.g., `Upscaled 3 image(s).`).
-- **Action labels (buttons, menu items):** Title Case (e.g., `Copy to Clipboard`, `Open in Editor`).
-- **Form labels:** Title Case. Form descriptions: sentence case.
-- **Section headers in `ActionPanel.Section title`:** Title Case (e.g., `NPU Actions (AI)`, `Standard Actions (CPU)`).
-
-### Toast templates
-
-| State | `Toast.Style` | Title | Message |
-|-------|---------------|-------|---------|
-| Animated (working) | `Animated` | `Running NPU <Friendly Name>...` *(NPU)* / `Formatting with Phi-Silica...` *(Phi)* / `Detecting Active Workspace...` *(toolbox)* | `First run may take a moment to prepare the NPU model.` (NPU only; Phi/toolbox: short context-specific message ending in `...`) |
-| Success | `Success` | `<Friendly Name> Complete` *or* a direct outcome statement (e.g., `PC Will Stay Awake Indefinitely`, `Note Saved`) | `<Plain past-tense summary>.` (e.g., `Upscaled 3 image(s).`, `Saved to school/2026-05-07_office-hours.md.`) — optional when the title is already self-explanatory. |
-| Failure (action) | `Failure` | `<Friendly Name> Failed` (e.g., `Super Resolution Failed`, `OCR Failed`) | `<One-sentence reason>. <One short recovery hint>.` (e.g., `Bridge not found. Run dotnet publish in npu-image-editor-ext/bridge.`) |
-| Failure (validation) | `Failure` | `<Issue>` — direct noun phrase, Title Case (e.g., `No Images Selected`, `Invalid Time Format`, `No Note Provided`) | `<What to do instead>.` Required for every Failure toast — never leave a bare title with no message. |
-
-- **Ellipsis form is exactly three dots** (`...`), never `…` (U+2026). Animated toasts always end in `...`. Success/failure messages never do.
-- **Quotes inside toast strings are ASCII** (`"` `'`), not curly typography (`“` `”` `‘` `’`). Same applies to `Form` labels, `List.EmptyView` strings, `confirmAlert` text — anywhere a string is rendered to the user.
-- **Never** mix `Processing...` and `Please wait` in the same flow. Always prefer the `Running NPU <Friendly Name>...` form for NPU calls.
-- **Never** emit emoji in toasts. (Plain templates only — they render badly in the Raycast toast UI on Windows.)
-- **Failure toasts must have a message.** Even a validation failure like "No Images Selected" benefits from a one-line follow-up so the user knows what to do.
-
-### Toast audit tool
-
-`scripts/audit-toasts.mjs` (root level) scans every `*-ext/src/**/*.{ts,tsx}` for `showToast({...})` calls and `<var>.title|message|style = ...` assignments. Run from repo root:
-
-```powershell
-node scripts/audit-toasts.mjs           # report-only; exit 1 if any violations
-node scripts/audit-toasts.mjs --fix     # apply mechanical fixes, then re-audit
-node scripts/audit-toasts.mjs --verbose # also print clean toasts in the table
-```
-
-Mechanical fixes (auto-applied with `--fix`):
-
-- Replace `…` (U+2026) with `...` inside string and template literals.
-- Replace curly quotes (`“ ” ‘ ’`) with their ASCII equivalents inside string and template literals.
-- Append a trailing `.` to `message: "..."` and `<var>.message = "..."` string literals that lack terminal punctuation.
-- Trim trailing whitespace inside `title` / `message` literals.
-
-Human-review violations (reported, never auto-fixed):
-
-- `animated-title-missing-ellipsis` — Animated toast title doesn't end in `...`.
-- `success-title-mentions-failure` — Success-style toast title contains "Failed" / "Error".
-- `success-title-trailing-punctuation` — Success-style title ends in `.` / `!` / `?`.
-- `failure-without-message` — Failure-style toast has no `message` field at all.
-- `emoji-in-title` / `emoji-in-message` — emoji codepoints in user-visible strings.
-
-The script writes a JSON report to `scripts/audit-toasts.report.json` (gitignored — it's regenerated on every run). New extensions inherit the audit by virtue of being under a `*-ext` folder; no per-extension wiring needed.
-
-### Action panel ordering (top-to-bottom in every command)
-
-1. **Primary destructive-or-output action** (`Copy to Clipboard`, `Save Note`, `Upscale Images`, `Make Sticker`).
-2. **Try Another / Regenerate** (where applicable).
-3. **Navigation** (`Open in Editor`, `Open Folder`, `Open Repo in Explorer`).
-4. **Selection management** (`Refresh Selection`, `Paste from Clipboard`, `Remove from Selection`).
-
-### Error handling rules (apply to every extension)
-
-- All bridge spawns, file I/O, PowerShell calls, and `git` calls go through one helper per extension (`run-bridge.ts`, `git.ts`, etc.) and that helper **always returns** `{ ok: true, value } | { ok: false, error }` — it does not throw to the UI layer.
-- The TS UI layer translates `{ ok: false, error }` into a `Toast.Style.Failure` toast using the template above. **No `throw` reaches the React render path.**
-- Bridge `Program.cs` always emits exactly one JSON line on stdout, regardless of error. Stack traces and developer diagnostics go to stderr and are logged with `console.error("[<BridgeName>]", stderr)` in TS — never parsed.
-- Input validation lives at the boundary (form `onSubmit`, argv parsing in `Program.cs`) and produces a `Failure` toast / `{ status: "error", ... }` JSON respectively. No deeper helper revalidates.
-
-### Code-cleanliness rules (apply when writing or touching any file)
-
-- **Naming:** TypeScript = `camelCase` for vars/functions, `PascalCase` for components/types. C# = `PascalCase` for public, `_camelCase` for private fields, `camelCase` for locals. No abbreviations except domain ones (`npu`, `ocr`, `cwd`, `pid`, `pii`).
-- **Imports:** stdlib (`fs`, `path`, `os`, `child_process`, `util`) → third-party (`@raycast/api`, `jimp`, `@jsquash/*`) → internal (`./utils/*`, `./shared/*`). Sorted alphabetically inside each group. No duplicates. No unused imports.
-- **Magic values:** every literal that appears more than once, or that has domain meaning (`2048`, `100_000`, `0x80073CFB`, `"NpuBridge.Identity"`, file suffix strings) becomes a named `const` at the top of the file or in `src/constants.ts`.
-- **DRY:** the bridge spawn helper, the WebP encoder init, the JSON-extract helper, the foreground-context detector, and the frontmatter parser each live in **one** place and are imported. Duplicated 2+ times = extract.
-- **Dead code:** no commented-out blocks (use git history). No `// TODO` without a `FEATURE_PLAN.md` link. No stubs that show `WIP` to users — gate them behind a Raycast preference if they must ship before completion.
+> **Normative content moved (2026-05-11):** Toast copy, typography, `ActionPanel` ordering, bridge/UI error boundaries, TypeScript and C# hygiene, and the **`scripts/audit-toasts.mjs`** workflow live in **[`docs/SUITE_STYLE_GUIDE.md`](docs/SUITE_STYLE_GUIDE.md)**. Read that file before changing user-visible strings or spawn helpers. This heading remains as the anchor for cross-links from older notes.
 
 ### Cleanup follow-ups
 
@@ -1473,7 +1401,7 @@ The script writes a JSON report to `scripts/audit-toasts.report.json` (gitignore
     - `npu-notes-ext/browse-notes`: Delete Note should be doable from keyboard with a one-step shortcut + confirm.
 
 - ✅ **WebP encoder / wasm asset wiring** *(done 2026-05-08)*. Inline `ensureWebpEncodeInit` moved to `npu-image-editor-ext/src/utils/webp-encoder.ts` (now exposes `encodeRgbaToWebp`). Missing wasms now copied at build time by `scripts/copy-wasm.mjs`, wired as `prebuild` and `predev` in `package.json`. `assets/webp/` and `*.wasm` added to root `.gitignore`.
-- ✅ **`runNpuCommand` extracted** *(done 2026-05-08)*. Moved to `npu-image-editor-ext/src/utils/run-npu-command.ts` (returns `{ ok, result } | { ok, error }`, never throws — matches the "Error handling rules" in § Suite UX conventions). `modify-image.tsx`, `super-resolution.tsx`, and `extract-text.tsx` all use it. `make-sticker.tsx` (when written) should use the same helper.
+- ✅ **`runNpuCommand` extracted** *(done 2026-05-08)*. Moved to `npu-image-editor-ext/src/utils/run-npu-command.ts` (returns `{ ok, result } | { ok, error }`, never throws — matches the **Error handling rules** in **`docs/SUITE_STYLE_GUIDE.md`**). `modify-image.tsx`, `super-resolution.tsx`, and `extract-text.tsx` all use it. `make-sticker.tsx` (when written) should use the same helper.
 - ✅ **`ImageForegroundExtractor` references corrected** *(done 2026-05-08)*. `docs/RUNBOOK.md`, `npu-image-editor-ext/NOTES.md`, `NPU_INFO.md`, and the active forward-looking parts of `FEATURE_PLAN.md §6` now say `ImageObjectExtractor` with a parenthetical noting the older draft name. Historical struck-through sections were left untouched per the planning-database rule at the top of this file.
 - ✅ **`search-notes` command hidden** *(done 2026-05-08)*. Removed from `npu-notes-ext/package.json` and the stub `src/search-notes.tsx` deleted to satisfy the "no `WIP` to users" rule. Re-added as part of §10 (see "Re-introduce `search-notes`" subsection).
 - ✅ **`NpuBridge.exe` name collision header comments added** *(done 2026-05-08)*. Each `bridge/Program.cs` now opens with a sparse-identity banner naming the matching `Package.appxmanifest` Identity Name and warning not to copy the exe across extensions.

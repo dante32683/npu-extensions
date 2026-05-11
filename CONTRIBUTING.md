@@ -6,12 +6,13 @@ How to build, change, and **record** work so humans and any AI tool stay aligned
 
 | Order | File | Role |
 |-------|------|------|
-| 1 | **`docs/FORWARD_ROADMAP.md`** | **Active forward roadmap** — scannable next-up work (notes AppContentIndexer/RAG, text hotkeys, SDK alignment, `TextRewriter`, etc.). Update this when scope changes. |
-| 2 | **`FEATURE_PLAN.md`** | **Full planning archive** — deep specs, large §§, suite UX conventions, dated lessons, struck-through history. Use for detail behind the forward roadmap. |
-| 3 | **`EXTENSION_REGISTRY.md`** | Current facts: which folder has which bridge, sparse `Identity` names, publish conventions. |
-| 4 | **`docs/RUNBOOK.md`** | Bridge mechanics, Phi / WinRT patterns, troubleshooting, operational gotchas. |
-| 5 | **`<extension>/NOTES.md`** | Extension-specific quirks and pointers (see below). |
-| 6 | **`CHANGELOG.md`** | User-visible / bridge **release notes** — append every merged change set. |
+| 1 | **`docs/FORWARD_ROADMAP.md`** | **Active forward roadmap** — scannable next-up work (notes AppContentIndexer/RAG, text hotkeys, SDK alignment, `TextRewriter`, **§8 suite-wide command consolidation**, etc.). Update this when scope changes. |
+| 2 | **`docs/SUITE_STYLE_GUIDE.md`** | **Suite UI & code style (canonical)** — toast templates, typography, `ActionPanel` order, `{ ok, error }` boundaries, TS/C# hygiene, `audit-toasts.mjs`. **AI tools and humans should read this before changing user-visible strings or bridge glue.** |
+| 3 | **`FEATURE_PLAN.md`** | **Full planning archive** — deep specs, large §§, dated lessons, struck-through history. UX norms are summarized in the style guide; use this file for feature narratives and cleanup checklists. |
+| 4 | **`EXTENSION_REGISTRY.md`** | Current facts: which folder has which bridge, sparse `Identity` names, publish conventions. |
+| 5 | **`docs/RUNBOOK.md`** | Bridge mechanics, Phi / WinRT patterns, troubleshooting, operational gotchas. |
+| 6 | **`<extension>/NOTES.md`** | Extension-specific quirks and pointers (see below). |
+| 7 | **`CHANGELOG.md`** | User-visible / bridge **release notes** — append every merged change set. |
 
 **Human onboarding (meta):** [`docs/HOW_TO_USE_THE_DOC_SYSTEM.md`](docs/HOW_TO_USE_THE_DOC_SYSTEM.md) — how to use this doc layout; omitted from automatic context via **`.cursorignore`**, **`.geminiignore`**, **`.claudeignore`** (and **`.agentignore`** as a non-standard extra). **Cursor** uses `.cursorignore`, not `.agentignore` ([Cursor ignore files](https://cursor.com/docs/context/ignore-files)).
 
@@ -27,7 +28,9 @@ Optional: `COPILOT_CONTEXT.md`, `NPU_INFO.md` (if present in your clone), root `
 
 ### Vendor stub files (Cursor, Claude Code, Gemini CLI, etc.)
 
-`AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` at the repo root are **short redirects** to this file and the map above—keep them small so each tool’s auto-load still lands on the same workflow.
+`AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` at the repo root are **short redirects** to this file and the map above—keep them small so each tool’s auto-load still lands on the same workflow. Those stubs **must** mention **`docs/SUITE_STYLE_GUIDE.md`** so UI work does not miss suite-wide copy and toast rules.
+
+**Cursor:** `.cursor/rules/suite-style-guide.mdc` (`alwaysApply: true`) points the agent at **`docs/SUITE_STYLE_GUIDE.md`** so style rules load even when the planning archive is not in context.
 
 ## Prerequisites
 
@@ -95,6 +98,8 @@ If `Package.appxmanifest` or `app.manifest` changes, re-run `register-bridge.ps1
 TypeScript + React JSX, strict TS, `@/*` → `src/*` where `tsconfig.json` defines it. Kebab-case command files; PascalCase for exported components when named. Prettier + `@raycast/eslint-config`; run `npm run lint` before submitting.
 
 Prettier (typical suite defaults): print width 120, tab width 4 spaces, no semicolons, double quotes, arrow parens avoid for single param, trailing commas all.
+
+**Toasts, forms, actions, and bridge error shapes:** follow **[`docs/SUITE_STYLE_GUIDE.md`](docs/SUITE_STYLE_GUIDE.md)** (not the long [`FEATURE_PLAN.md`](FEATURE_PLAN.md) archive).
 
 ## Testing
 

@@ -1,0 +1,12 @@
+---
+description: Suite UI copy, Raycast toasts, and TS/C# hygiene for NPU extensions
+alwaysApply: true
+---
+
+# Suite style & UX (required reference)
+
+When you add or change **user-visible strings**, **`showToast`**, **`Form` / `List` / `confirmAlert` copy**, **`ActionPanel`** sections, or **bridge spawn / `{ ok, error }` helpers** in any `*-ext` folder, read and follow **`docs/SUITE_STYLE_GUIDE.md`** before submitting.
+
+After editing toasts, run from repo root: **`node scripts/audit-toasts.mjs`** (use **`--fix`** only when mechanical fixes are appropriate).
+
+Human workflow hub: **`CONTRIBUTING.md`**. Do not mine **`FEATURE_PLAN.md`** for toast templates — that file is the planning archive; norms live in **`docs/SUITE_STYLE_GUIDE.md`**.

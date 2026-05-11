@@ -1,6 +1,6 @@
 # Runbook — bridges, WinRT, Phi, troubleshooting
 
-Operational and technical reference for **all** extensions. Planning specs and per-feature narratives stay in **`FEATURE_PLAN.md`**. Factual wiring (identities, folders) in **`EXTENSION_REGISTRY.md`**. Contributor workflow in **`CONTRIBUTING.md`**.
+Operational and technical reference for **all** extensions. Planning specs and per-feature narratives stay in **`FEATURE_PLAN.md`**. **User-visible copy, toasts, and TS/C# hygiene** are canonical in **`docs/SUITE_STYLE_GUIDE.md`**. Factual wiring (identities, folders) in **`EXTENSION_REGISTRY.md`**. Contributor workflow in **`CONTRIBUTING.md`**.
 
 ## Suite layout (volatile data)
 

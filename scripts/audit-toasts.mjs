@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Audits Raycast toast strings across all *-ext extensions for the Suite UX
-// conventions defined in FEATURE_PLAN.md (search for "Suite UX conventions").
+// Audits Raycast toast strings across all *-ext extensions for the suite UX
+// conventions in docs/SUITE_STYLE_GUIDE.md.
 //
 // Usage (from repo root):
 //   node scripts/audit-toasts.mjs            # report only, exit 0 if clean else 1
@@ -684,7 +684,7 @@ function main() {
     console.log(`Scanned ${extDirs.length} extension(s), ${totalToasts} toast record(s) total.\n`)
 
     if (flagged.length === 0) {
-        console.log("All toasts match Suite UX conventions.")
+        console.log("All toasts match docs/SUITE_STYLE_GUIDE.md conventions.")
     } else {
         console.log(`${flagged.length} toast(s) need attention:\n`)
         const grouped = new Map()
