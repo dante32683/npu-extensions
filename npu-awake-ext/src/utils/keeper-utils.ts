@@ -51,6 +51,19 @@ function keeperExePath(): string {
     return path.join(environment.assetsPath, "bin", "AwakeKeeper.exe")
 }
 
+/** Raycast LocalStorage may round-trip numeric PIDs inconsistently; normalize before `process.kill`. */
+function normalizeStoredPid(raw: unknown): number | null {
+    if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) {
+        const n = Math.floor(raw)
+        return n > 0 ? n : null
+    }
+    if (typeof raw === "string" && /^\d+$/.test(raw)) {
+        const n = Number(raw)
+        return Number.isFinite(n) && n > 0 ? n : null
+    }
+    return null
+}
+
 function isPidAlive(pid: number): boolean {
     try {
         process.kill(pid, 0)
@@ -61,60 +74,132 @@ function isPidAlive(pid: number): boolean {
 }
 
 export async function stopDaemon() {
-    const pid = await LocalStorage.getItem<number>(DAEMON_PID_KEY)
+    const raw = await LocalStorage.getItem(DAEMON_PID_KEY)
+    const pid = normalizeStoredPid(raw)
+    if (raw === undefined || raw === null) return
     if (pid) {
         try {
             process.kill(pid)
         } catch {
             // already dead or no permission
         }
-        await LocalStorage.removeItem(DAEMON_PID_KEY)
     }
+    await LocalStorage.removeItem(DAEMON_PID_KEY)
 }
 
 export async function ensureDaemonRunning(): Promise<number | null> {
-    const existing = await LocalStorage.getItem<number>(DAEMON_PID_KEY)
+    const rawExisting = await LocalStorage.getItem(DAEMON_PID_KEY)
+    const existing = normalizeStoredPid(rawExisting)
     if (existing && isPidAlive(existing)) return existing
+    if (rawExisting !== undefined && rawExisting !== null) {
+        await LocalStorage.removeItem(DAEMON_PID_KEY)
+    }
 
     const binPath = keeperExePath()
     if (!fs.existsSync(binPath)) {
         await showToast({
             style: Toast.Style.Failure,
-            title: "Keeper Binary Not Found",
-            message: "Please build the extension first.",
+            title: "Awake Keeper Failed",
+            message: `AwakeKeeper.exe was not found. Build the keeper and ensure assets/bin contains the publish output.`,
         })
         return null
     }
 
+    const binDir = path.dirname(binPath)
     const { supportDir } = getStatePaths()
     const args: string[] = ["daemon", supportDir]
 
-    const child = spawn(binPath, args, {
-        detached: true,
-        stdio: "ignore",
-        windowsHide: true,
+    const startTimeoutMs = 8000
+    const verifyAliveMs = 500
+
+    return await new Promise<number | null>(resolve => {
+        let settled = false
+        const startTimeout: { id?: ReturnType<typeof setTimeout> } = {}
+
+        const finish = async (value: number | null, failureMessage?: string) => {
+            if (settled) return
+            settled = true
+            if (startTimeout.id !== undefined) clearTimeout(startTimeout.id)
+            if (failureMessage) {
+                await showToast({
+                    style: Toast.Style.Failure,
+                    title: "Awake Keeper Failed",
+                    message: failureMessage,
+                })
+            }
+            resolve(value)
+        }
+
+        startTimeout.id = setTimeout(() => {
+            void finish(
+                null,
+                "Starting the keeper timed out. Check antivirus, permissions, and that assets/bin is complete.",
+            )
+        }, startTimeoutMs)
+
+        const child = spawn(binPath, args, {
+            cwd: binDir,
+            detached: true,
+            stdio: "ignore",
+            windowsHide: true,
+        })
+
+        child.once("error", err => {
+            void finish(
+                null,
+                `Could not start the keeper (${err.message}). Reinstall the extension or rebuild npu-awake-ext/keeper.`,
+            )
+        })
+
+        child.once("spawn", () => {
+            void (async () => {
+                const pid = child.pid
+                if (!pid) {
+                    await finish(
+                        null,
+                        "The keeper did not return a process ID. Reinstall the extension or rebuild the keeper.",
+                    )
+                    return
+                }
+                await LocalStorage.setItem(DAEMON_PID_KEY, pid)
+                child.unref()
+                await new Promise<void>(r => setTimeout(r, verifyAliveMs))
+                if (!isPidAlive(pid)) {
+                    await LocalStorage.removeItem(DAEMON_PID_KEY)
+                    await finish(
+                        null,
+                        "The keeper exited right after launch. Reinstall the extension or verify the full publish output is under assets/bin.",
+                    )
+                    return
+                }
+                await finish(pid)
+            })()
+        })
     })
-
-    if (child.pid) {
-        await LocalStorage.setItem(DAEMON_PID_KEY, child.pid)
-        child.unref()
-        return child.pid
-    }
-
-    return null
 }
 
-export async function setOverride(override: { mode: OverrideMode; expiryEpochSeconds?: number | null } | null) {
+export async function setOverride(
+    override: { mode: OverrideMode; expiryEpochSeconds?: number | null } | null,
+): Promise<boolean> {
     const { statePath } = getStatePaths()
+    const previous = readJsonFile<unknown>(statePath, {})
     const next = override ? { override } : {}
     atomicWriteJson(statePath, next)
 
     const schedules = await getSchedules()
     if (override || schedules.length > 0) {
-        await ensureDaemonRunning()
-    } else {
-        await stopDaemon()
+        const pid = await ensureDaemonRunning()
+        if (!pid) {
+            if (override) {
+                atomicWriteJson(statePath, previous)
+            }
+            return false
+        }
+        return true
     }
+
+    await stopDaemon()
+    return true
 }
 
 export async function getSchedules(): Promise<KeeperStatus["schedules"]> {
@@ -154,9 +239,12 @@ export async function setSchedules(schedules: KeeperStatus["schedules"]) {
 }
 
 export async function getKeeperStatus(): Promise<KeeperStatus> {
-    const pid = await LocalStorage.getItem<number>(DAEMON_PID_KEY)
-    const daemonPid = pid && isPidAlive(pid) ? pid : null
-    if (pid && !daemonPid) await LocalStorage.removeItem(DAEMON_PID_KEY)
+    const rawPid = await LocalStorage.getItem(DAEMON_PID_KEY)
+    const normalized = normalizeStoredPid(rawPid)
+    const daemonPid = normalized && isPidAlive(normalized) ? normalized : null
+    if (rawPid !== undefined && rawPid !== null && !daemonPid) {
+        await LocalStorage.removeItem(DAEMON_PID_KEY)
+    }
 
     const { statePath } = getStatePaths()
     const state = readJsonFile<unknown>(statePath, {})

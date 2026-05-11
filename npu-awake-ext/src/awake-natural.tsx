@@ -164,7 +164,11 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
             }
 
             if (intent.action === "stop") {
-                await setOverride(null)
+                const ok = await setOverride(null)
+                if (!ok) {
+                    await toast.hide()
+                    return
+                }
                 if (prefs.showSuccessToasts !== false) {
                     toast.style = Toast.Style.Success
                     toast.title = "PC can now sleep"
@@ -187,7 +191,11 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
 
             if (intent.action === "start") {
                 if (intent.mode === "indefinite") {
-                    await setOverride({ mode: "indefinite" })
+                    const ok = await setOverride({ mode: "indefinite" })
+                    if (!ok) {
+                        await toast.hide()
+                        return
+                    }
                     if (prefs.showSuccessToasts !== false) {
                         toast.style = Toast.Style.Success
                         toast.title = "PC Will Stay Awake Indefinitely"
@@ -199,7 +207,11 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
                 }
 
                 if (intent.mode === "screen-off") {
-                    await setOverride({ mode: "screen-off" })
+                    const ok = await setOverride({ mode: "screen-off" })
+                    if (!ok) {
+                        await toast.hide()
+                        return
+                    }
                     if (prefs.showSuccessToasts !== false) {
                         toast.style = Toast.Style.Success
                         toast.title = "PC awake, display can sleep"
@@ -217,7 +229,11 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
                     }
                     const seconds = Math.floor(value * (unit === "hours" ? 3600 : 60))
                     const expiry = Math.floor(Date.now() / 1000) + seconds
-                    await setOverride({ mode: "timed", expiryEpochSeconds: expiry })
+                    const ok = await setOverride({ mode: "timed", expiryEpochSeconds: expiry })
+                    if (!ok) {
+                        await toast.hide()
+                        return
+                    }
                     if (prefs.showSuccessToasts !== false) {
                         toast.style = Toast.Style.Success
                         toast.title = `PC Will Stay Awake for ${value} ${unit}`
@@ -234,7 +250,11 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
                     const target = parseHmToTodayEpoch(hm)
                     if (!target) throw new Error('Invalid time format. Use "HH:mm" like 17:30.')
                     if (target <= Math.floor(Date.now() / 1000)) throw new Error("That time is in the past (today).")
-                    await setOverride({ mode: "until", expiryEpochSeconds: target })
+                    const ok = await setOverride({ mode: "until", expiryEpochSeconds: target })
+                    if (!ok) {
+                        await toast.hide()
+                        return
+                    }
                     if (prefs.showSuccessToasts !== false) {
                         toast.style = Toast.Style.Success
                         toast.title = `PC Will Stay Awake Until ${hm}`

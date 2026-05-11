@@ -8,7 +8,7 @@ Raycast **does not** keep this program running in the background. Each **Copy** 
 
 If Raycast is **still** the foreground window after the wait budget, the helper **exits with code 2** and does **not** send keys (sending Copy then would only hit Raycast and produce bogus “no selection” behavior). It first tries **AttachThreadInput** + **SetForegroundWindow** on the window **below** the current foreground in z-order.
 
-If selection commands misbehave, run the Raycast command **Verify Text Selection Helper** (or from PowerShell: `.\TextSelectionHelper.exe noop` in `assets\bin\selection-helper\`).
+If selection commands misbehave, open the Raycast command **Text Tools Diagnostics** and use **Verify Helper** (or from PowerShell: `.\TextSelectionHelper.exe noop` in `assets\bin\selection-helper\`).
 
 ## Publish (from repo root)
 

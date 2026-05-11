@@ -7,7 +7,7 @@ How to build, change, and **record** work so humans and any AI tool stay aligned
 | Order | File | Role |
 |-------|------|------|
 | 1 | **`docs/FORWARD_ROADMAP.md`** | **Active forward roadmap** — scannable next-up work (notes AppContentIndexer/RAG, text hotkeys, SDK alignment, `TextRewriter`, **§8 suite-wide command consolidation**, etc.). Update this when scope changes. |
-| 2 | **`docs/SUITE_STYLE_GUIDE.md`** | **Suite UI & code style (canonical)** — toast templates, typography, `ActionPanel` order, `{ ok, error }` boundaries, TS/C# hygiene, `audit-toasts.mjs`. **AI tools and humans should read this before changing user-visible strings or bridge glue.** |
+| 2 | **`docs/SUITE_STYLE_GUIDE.md`** | **Suite UI & code style (canonical)** — toast templates, typography, `ActionPanel` order, `{ ok, error }` boundaries, TS/C# hygiene, `audit-toasts.mjs`, **Raycast `package.json` preference placement** (extension vs per-command). **AI tools and humans should read this before changing user-visible strings, prefs layout, or bridge glue.** |
 | 3 | **`FEATURE_PLAN.md`** | **Full planning archive** — deep specs, large §§, dated lessons, struck-through history. UX norms are summarized in the style guide; use this file for feature narratives and cleanup checklists. |
 | 4 | **`EXTENSION_REGISTRY.md`** | Current facts: which folder has which bridge, sparse `Identity` names, publish conventions. |
 | 5 | **`docs/RUNBOOK.md`** | Bridge mechanics, Phi / WinRT patterns, troubleshooting, operational gotchas. |

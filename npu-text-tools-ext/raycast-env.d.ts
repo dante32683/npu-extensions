@@ -8,15 +8,11 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 type ExtensionPreferences = {
-  /** Prefill From Clipboard - When enabled, text tools pre-fill with clipboard text on launch. */
-  "prefillFromClipboard": boolean,
   /** Show Success Toasts - When enabled, shows a success toast after a rewrite operation. */
   "showSuccessToasts": boolean,
   /** Ensure AI Model Ready - When enabled, calls EnsureReadyAsync before AI operations to avoid 'NotReady' errors. */
   "ensureModelReady": boolean,
-  /** Quick Custom Instruction - Used by Custom … (Paste/Review Selection) commands when there is no form to type an instruction. */
-  "quickCustomInstruction"?: string,
-  /** Selection Copy Delay - Wait after simulated Ctrl+C before reading the clipboard. Increase if selection capture fails in slow apps. */
+  /** Selection Copy Delay - Wait after simulated Ctrl+C before reading the clipboard. Increase if selection capture fails in slow apps. Used by selection capture (quick paste/review and helper fallback). */
   "selectionCopyDelayMs": "80" | "120" | "200" | "350",
   /** Focus Wait (Max) - Native helper polls up to this long until the foreground window is not Raycast, then sends Copy/Paste. Increase if capture still fails after reloading the extension. */
   "selectionFocusReleaseMs": "1000" | "2000" | "3500" | "5000"
@@ -27,43 +23,51 @@ declare type Preferences = ExtensionPreferences
 
 declare namespace Preferences {
   /** Preferences accessible in the `fix-grammar` command */
-  export type FixGrammar = ExtensionPreferences & {}
+  export type FixGrammar = ExtensionPreferences & {
+  /** Prefill From Clipboard - When enabled, this command's form pre-fills with clipboard text on launch. */
+  "prefillFromClipboard": boolean
+}
   /** Preferences accessible in the `make-formal` command */
-  export type MakeFormal = ExtensionPreferences & {}
+  export type MakeFormal = ExtensionPreferences & {
+  /** Prefill From Clipboard - When enabled, this command's form pre-fills with clipboard text on launch. */
+  "prefillFromClipboard": boolean
+}
   /** Preferences accessible in the `make-concise` command */
-  export type MakeConcise = ExtensionPreferences & {}
+  export type MakeConcise = ExtensionPreferences & {
+  /** Prefill From Clipboard - When enabled, this command's form pre-fills with clipboard text on launch. */
+  "prefillFromClipboard": boolean
+}
   /** Preferences accessible in the `bullet-points` command */
-  export type BulletPoints = ExtensionPreferences & {}
+  export type BulletPoints = ExtensionPreferences & {
+  /** Prefill From Clipboard - When enabled, this command's form pre-fills with clipboard text on launch. */
+  "prefillFromClipboard": boolean
+}
   /** Preferences accessible in the `simplify` command */
-  export type Simplify = ExtensionPreferences & {}
+  export type Simplify = ExtensionPreferences & {
+  /** Prefill From Clipboard - When enabled, this command's form pre-fills with clipboard text on launch. */
+  "prefillFromClipboard": boolean
+}
   /** Preferences accessible in the `custom-rewrite` command */
-  export type CustomRewrite = ExtensionPreferences & {}
-  /** Preferences accessible in the `verify-selection-helper` command */
-  export type VerifySelectionHelper = ExtensionPreferences & {}
-  /** Preferences accessible in the `pasteback-fix-grammar` command */
-  export type PastebackFixGrammar = ExtensionPreferences & {}
-  /** Preferences accessible in the `pasteback-make-formal` command */
-  export type PastebackMakeFormal = ExtensionPreferences & {}
-  /** Preferences accessible in the `pasteback-make-concise` command */
-  export type PastebackMakeConcise = ExtensionPreferences & {}
-  /** Preferences accessible in the `pasteback-bullet-points` command */
-  export type PastebackBulletPoints = ExtensionPreferences & {}
-  /** Preferences accessible in the `pasteback-simplify` command */
-  export type PastebackSimplify = ExtensionPreferences & {}
-  /** Preferences accessible in the `pasteback-custom-rewrite` command */
-  export type PastebackCustomRewrite = ExtensionPreferences & {}
-  /** Preferences accessible in the `review-fix-grammar` command */
-  export type ReviewFixGrammar = ExtensionPreferences & {}
-  /** Preferences accessible in the `review-make-formal` command */
-  export type ReviewMakeFormal = ExtensionPreferences & {}
-  /** Preferences accessible in the `review-make-concise` command */
-  export type ReviewMakeConcise = ExtensionPreferences & {}
-  /** Preferences accessible in the `review-bullet-points` command */
-  export type ReviewBulletPoints = ExtensionPreferences & {}
-  /** Preferences accessible in the `review-simplify` command */
-  export type ReviewSimplify = ExtensionPreferences & {}
-  /** Preferences accessible in the `review-custom-rewrite` command */
-  export type ReviewCustomRewrite = ExtensionPreferences & {}
+  export type CustomRewrite = ExtensionPreferences & {
+  /** Prefill From Clipboard - When enabled, this command's form pre-fills with clipboard text on launch. */
+  "prefillFromClipboard": boolean
+}
+  /** Preferences accessible in the `text-tools-diagnostics` command */
+  export type TextToolsDiagnostics = ExtensionPreferences & {}
+  /** Preferences accessible in the `paste-selection-quick` command */
+  export type PasteSelectionQuick = ExtensionPreferences & {
+  /** Quick Rewrite Mode - Phi rewrite mode for this command. Match **Review Selection (Quick)** → Quick rewrite mode for the same behavior. */
+  "quickRewriteMode": "grammar" | "formal" | "concise" | "bullets" | "simplify" | "custom",
+  /** Quick Custom Instruction - Used when Quick rewrite mode is Custom. Match **Review Selection (Quick)** → Quick custom instruction. */
+  "quickCustomInstruction"?: string
+}
+  /** Preferences accessible in the `review-selection-quick` command */
+  export type ReviewSelectionQuick = ExtensionPreferences & {
+  /** Quick Rewrite Mode - Phi rewrite mode for this command. Match **Paste Selection (Quick)** → Quick rewrite mode for the same behavior. */
+  "quickRewriteMode": "grammar" | "formal" | "concise" | "bullets" | "simplify" | "custom",
+  /** Quick Custom Instruction - Used when Quick rewrite mode is Custom. Match **Paste Selection (Quick)** → Quick custom instruction. */
+  "quickCustomInstruction"?: string
+}
   /** Preferences accessible in the `review-selection-pane` command */
   export type ReviewSelectionPane = ExtensionPreferences & {}
 }
@@ -81,32 +85,12 @@ declare namespace Arguments {
   export type Simplify = {}
   /** Arguments passed to the `custom-rewrite` command */
   export type CustomRewrite = {}
-  /** Arguments passed to the `verify-selection-helper` command */
-  export type VerifySelectionHelper = {}
-  /** Arguments passed to the `pasteback-fix-grammar` command */
-  export type PastebackFixGrammar = {}
-  /** Arguments passed to the `pasteback-make-formal` command */
-  export type PastebackMakeFormal = {}
-  /** Arguments passed to the `pasteback-make-concise` command */
-  export type PastebackMakeConcise = {}
-  /** Arguments passed to the `pasteback-bullet-points` command */
-  export type PastebackBulletPoints = {}
-  /** Arguments passed to the `pasteback-simplify` command */
-  export type PastebackSimplify = {}
-  /** Arguments passed to the `pasteback-custom-rewrite` command */
-  export type PastebackCustomRewrite = {}
-  /** Arguments passed to the `review-fix-grammar` command */
-  export type ReviewFixGrammar = {}
-  /** Arguments passed to the `review-make-formal` command */
-  export type ReviewMakeFormal = {}
-  /** Arguments passed to the `review-make-concise` command */
-  export type ReviewMakeConcise = {}
-  /** Arguments passed to the `review-bullet-points` command */
-  export type ReviewBulletPoints = {}
-  /** Arguments passed to the `review-simplify` command */
-  export type ReviewSimplify = {}
-  /** Arguments passed to the `review-custom-rewrite` command */
-  export type ReviewCustomRewrite = {}
+  /** Arguments passed to the `text-tools-diagnostics` command */
+  export type TextToolsDiagnostics = {}
+  /** Arguments passed to the `paste-selection-quick` command */
+  export type PasteSelectionQuick = {}
+  /** Arguments passed to the `review-selection-quick` command */
+  export type ReviewSelectionQuick = {}
   /** Arguments passed to the `review-selection-pane` command */
   export type ReviewSelectionPane = {}
 }

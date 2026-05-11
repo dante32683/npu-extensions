@@ -7,8 +7,8 @@ interface Preferences {
 
 export default async function Command() {
     const prefs = getPreferenceValues<Preferences>()
-    await setOverride(null)
-    if (prefs.showSuccessToasts !== false) {
+    const ok = await setOverride(null)
+    if (ok && prefs.showSuccessToasts !== false) {
         await showToast({
             style: Toast.Style.Success,
             title: "PC can now sleep",

@@ -13,8 +13,16 @@ export default function Command(props: LaunchProps<{ launchContext?: ReviewConte
     if (!ctx?.rewritten) {
         return (
             <Detail
-                navigationTitle="Review Selection"
-                markdown="## Nothing to show\n\nThis screen opens from a **Review Selection** command after text is captured."
+                navigationTitle="Review Selection (Internal)"
+                markdown={[
+                    "## Nothing to review yet",
+                    "",
+                    "You opened **Review Selection (Internal)** by itself. Raycast has no rewritten text to show until another command sends it here.",
+                    "",
+                    "**What to do:** Select text in your editor, then run **Review Selection (Quick)** (or use your hotkey bound to that command — not this one). That flow captures the selection, calls Phi-Silica, and opens this pane with the result.",
+                    "",
+                    "**Hotkeys:** Point them at **Review Selection (Quick)** or **Paste Selection (Quick)**. Do not bind **Review Selection (Internal)**; it is only a programmatic target.",
+                ].join("\n")}
             />
         )
     }

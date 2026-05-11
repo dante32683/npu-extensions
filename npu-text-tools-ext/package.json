@@ -11,115 +11,173 @@
             "name": "fix-grammar",
             "title": "Fix Grammar",
             "description": "Correct spelling and grammar without changing meaning.",
-            "mode": "view"
+            "mode": "view",
+            "preferences": [
+                {
+                    "name": "prefillFromClipboard",
+                    "title": "Prefill From Clipboard",
+                    "description": "When enabled, this command's form pre-fills with clipboard text on launch.",
+                    "type": "checkbox",
+                    "required": false,
+                    "default": true,
+                    "label": "Prefill with clipboard text"
+                }
+            ]
         },
         {
             "name": "make-formal",
             "title": "Make Formal",
             "description": "Rewrite text in a professional tone.",
-            "mode": "view"
+            "mode": "view",
+            "preferences": [
+                {
+                    "name": "prefillFromClipboard",
+                    "title": "Prefill From Clipboard",
+                    "description": "When enabled, this command's form pre-fills with clipboard text on launch.",
+                    "type": "checkbox",
+                    "required": false,
+                    "default": true,
+                    "label": "Prefill with clipboard text"
+                }
+            ]
         },
         {
             "name": "make-concise",
             "title": "Make Concise",
             "description": "Shorten text to its essential points.",
-            "mode": "view"
+            "mode": "view",
+            "preferences": [
+                {
+                    "name": "prefillFromClipboard",
+                    "title": "Prefill From Clipboard",
+                    "description": "When enabled, this command's form pre-fills with clipboard text on launch.",
+                    "type": "checkbox",
+                    "required": false,
+                    "default": true,
+                    "label": "Prefill with clipboard text"
+                }
+            ]
         },
         {
             "name": "bullet-points",
             "title": "Bullet Points",
             "description": "Convert prose into a bullet point list.",
-            "mode": "view"
+            "mode": "view",
+            "preferences": [
+                {
+                    "name": "prefillFromClipboard",
+                    "title": "Prefill From Clipboard",
+                    "description": "When enabled, this command's form pre-fills with clipboard text on launch.",
+                    "type": "checkbox",
+                    "required": false,
+                    "default": true,
+                    "label": "Prefill with clipboard text"
+                }
+            ]
         },
         {
             "name": "simplify",
             "title": "Simplify",
             "description": "Rewrite in plain, easy-to-understand language.",
-            "mode": "view"
+            "mode": "view",
+            "preferences": [
+                {
+                    "name": "prefillFromClipboard",
+                    "title": "Prefill From Clipboard",
+                    "description": "When enabled, this command's form pre-fills with clipboard text on launch.",
+                    "type": "checkbox",
+                    "required": false,
+                    "default": true,
+                    "label": "Prefill with clipboard text"
+                }
+            ]
         },
         {
             "name": "custom-rewrite",
             "title": "Custom Rewrite",
             "description": "Describe how you want the text rewritten.",
+            "mode": "view",
+            "preferences": [
+                {
+                    "name": "prefillFromClipboard",
+                    "title": "Prefill From Clipboard",
+                    "description": "When enabled, this command's form pre-fills with clipboard text on launch.",
+                    "type": "checkbox",
+                    "required": false,
+                    "default": true,
+                    "label": "Prefill with clipboard text"
+                }
+            ]
+        },
+        {
+            "name": "text-tools-diagnostics",
+            "title": "Text Tools Diagnostics",
+            "description": "Selection helper path, open folder, and run the same noop verification as the old root command.",
             "mode": "view"
         },
         {
-            "name": "verify-selection-helper",
-            "title": "Verify Text Selection Helper",
-            "description": "Checks that TextSelectionHelper.exe exists and runs (noop). Use after publish or if selection commands fail.",
-            "mode": "no-view"
+            "name": "paste-selection-quick",
+            "title": "Paste Selection (Quick)",
+            "description": "Hotkey-friendly: capture selection, rewrite using Quick rewrite mode + Quick custom instruction (when mode is Custom), paste back.",
+            "mode": "no-view",
+            "preferences": [
+                {
+                    "name": "quickRewriteMode",
+                    "title": "Quick Rewrite Mode",
+                    "description": "Phi rewrite mode for this command. Match **Review Selection (Quick)** → Quick rewrite mode for the same behavior.",
+                    "type": "dropdown",
+                    "required": false,
+                    "default": "grammar",
+                    "data": [
+                        { "title": "Fix Grammar", "value": "grammar" },
+                        { "title": "Make Formal", "value": "formal" },
+                        { "title": "Make Concise", "value": "concise" },
+                        { "title": "Bullet Points", "value": "bullets" },
+                        { "title": "Simplify", "value": "simplify" },
+                        { "title": "Custom Rewrite", "value": "custom" }
+                    ]
+                },
+                {
+                    "name": "quickCustomInstruction",
+                    "title": "Quick Custom Instruction",
+                    "description": "Used when Quick rewrite mode is Custom. Match **Review Selection (Quick)** → Quick custom instruction.",
+                    "type": "textfield",
+                    "required": false,
+                    "placeholder": "e.g. Turn this into a polite email"
+                }
+            ]
         },
         {
-            "name": "pasteback-fix-grammar",
-            "title": "Fix Grammar (Paste Selection)",
-            "description": "Assign a global hotkey in Raycast: capture selection, rewrite, paste back (no review UI).",
-            "mode": "no-view"
-        },
-        {
-            "name": "pasteback-make-formal",
-            "title": "Make Formal (Paste Selection)",
-            "description": "Hotkey-friendly: capture selection, rewrite, paste back.",
-            "mode": "no-view"
-        },
-        {
-            "name": "pasteback-make-concise",
-            "title": "Make Concise (Paste Selection)",
-            "description": "Hotkey-friendly: capture selection, rewrite, paste back.",
-            "mode": "no-view"
-        },
-        {
-            "name": "pasteback-bullet-points",
-            "title": "Bullet Points (Paste Selection)",
-            "description": "Hotkey-friendly: capture selection, rewrite, paste back.",
-            "mode": "no-view"
-        },
-        {
-            "name": "pasteback-simplify",
-            "title": "Simplify (Paste Selection)",
-            "description": "Hotkey-friendly: capture selection, rewrite, paste back.",
-            "mode": "no-view"
-        },
-        {
-            "name": "pasteback-custom-rewrite",
-            "title": "Custom Rewrite (Paste Selection)",
-            "description": "Uses “Quick custom instruction” preference; capture selection, rewrite, paste back.",
-            "mode": "no-view"
-        },
-        {
-            "name": "review-fix-grammar",
-            "title": "Fix Grammar (Review Selection)",
-            "description": "Dismisses Raycast, captures selection, rewrites, then opens a review pane (Enter to replace).",
-            "mode": "no-view"
-        },
-        {
-            "name": "review-make-formal",
-            "title": "Make Formal (Review Selection)",
-            "description": "Dismisses Raycast, captures selection, rewrites, then opens a review pane.",
-            "mode": "no-view"
-        },
-        {
-            "name": "review-make-concise",
-            "title": "Make Concise (Review Selection)",
-            "description": "Dismisses Raycast, captures selection, rewrites, then opens a review pane.",
-            "mode": "no-view"
-        },
-        {
-            "name": "review-bullet-points",
-            "title": "Bullet Points (Review Selection)",
-            "description": "Dismisses Raycast, captures selection, rewrites, then opens a review pane.",
-            "mode": "no-view"
-        },
-        {
-            "name": "review-simplify",
-            "title": "Simplify (Review Selection)",
-            "description": "Dismisses Raycast, captures selection, rewrites, then opens a review pane.",
-            "mode": "no-view"
-        },
-        {
-            "name": "review-custom-rewrite",
-            "title": "Custom Rewrite (Review Selection)",
-            "description": "Uses Quick custom instruction; dismisses Raycast, captures, rewrites, review pane.",
-            "mode": "no-view"
+            "name": "review-selection-quick",
+            "title": "Review Selection (Quick)",
+            "description": "Hotkey-friendly: capture selection, rewrite using Quick rewrite mode, then open the review pane.",
+            "mode": "no-view",
+            "preferences": [
+                {
+                    "name": "quickRewriteMode",
+                    "title": "Quick Rewrite Mode",
+                    "description": "Phi rewrite mode for this command. Match **Paste Selection (Quick)** → Quick rewrite mode for the same behavior.",
+                    "type": "dropdown",
+                    "required": false,
+                    "default": "grammar",
+                    "data": [
+                        { "title": "Fix Grammar", "value": "grammar" },
+                        { "title": "Make Formal", "value": "formal" },
+                        { "title": "Make Concise", "value": "concise" },
+                        { "title": "Bullet Points", "value": "bullets" },
+                        { "title": "Simplify", "value": "simplify" },
+                        { "title": "Custom Rewrite", "value": "custom" }
+                    ]
+                },
+                {
+                    "name": "quickCustomInstruction",
+                    "title": "Quick Custom Instruction",
+                    "description": "Used when Quick rewrite mode is Custom. Match **Paste Selection (Quick)** → Quick custom instruction.",
+                    "type": "textfield",
+                    "required": false,
+                    "placeholder": "e.g. Turn this into a polite email"
+                }
+            ]
         },
         {
             "name": "review-selection-pane",
@@ -129,15 +187,6 @@
         }
     ],
     "preferences": [
-        {
-            "name": "prefillFromClipboard",
-            "title": "Prefill From Clipboard",
-            "description": "When enabled, text tools pre-fill with clipboard text on launch.",
-            "type": "checkbox",
-            "required": false,
-            "default": true,
-            "label": "Prefill with clipboard text"
-        },
         {
             "name": "showSuccessToasts",
             "title": "Show Success Toasts",
@@ -157,17 +206,9 @@
             "label": "Wait for AI model readiness"
         },
         {
-            "name": "quickCustomInstruction",
-            "title": "Quick Custom Instruction",
-            "description": "Used by Custom … (Paste/Review Selection) commands when there is no form to type an instruction.",
-            "type": "textfield",
-            "required": false,
-            "placeholder": "e.g. Turn this into a polite email"
-        },
-        {
             "name": "selectionCopyDelayMs",
             "title": "Selection Copy Delay",
-            "description": "Wait after simulated Ctrl+C before reading the clipboard. Increase if selection capture fails in slow apps.",
+            "description": "Wait after simulated Ctrl+C before reading the clipboard. Increase if selection capture fails in slow apps. Used by selection capture (quick paste/review and helper fallback).",
             "type": "dropdown",
             "required": false,
             "default": "120",

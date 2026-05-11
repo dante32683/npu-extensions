@@ -1,3 +1,4 @@
+/** Extension-level prefs read from `selection-rewrite` / review bootstrap (no command-scoped keys). */
 export type SelectionPrefs = {
     showSuccessToasts?: boolean
     ensureModelReady?: boolean

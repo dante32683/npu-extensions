@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Suite style & UX (required reference)
 
-When you add or change **user-visible strings**, **`showToast`**, **`Form` / `List` / `confirmAlert` copy**, **`ActionPanel`** sections, or **bridge spawn / `{ ok, error }` helpers** in any `*-ext` folder, read and follow **`docs/SUITE_STYLE_GUIDE.md`** before submitting.
+When you add or change **user-visible strings**, **`showToast`**, **`Form` / `List` / `confirmAlert` copy**, **`ActionPanel`** sections, **`package.json` preferences** (extension vs per-command placement), or **bridge spawn / `{ ok, error }` helpers** in any `*-ext` folder, read and follow **`docs/SUITE_STYLE_GUIDE.md`** before submitting.
 
 After editing toasts, run from repo root: **`node scripts/audit-toasts.mjs`** (use **`--fix`** only when mechanical fixes are appropriate).
 

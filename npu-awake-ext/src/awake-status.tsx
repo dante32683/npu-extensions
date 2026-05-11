@@ -116,9 +116,9 @@ export default function Command() {
                                     title="Let PC Sleep"
                                     icon={Icon.Moon}
                                     onAction={async () => {
-                                        await setOverride(null)
+                                        const ok = await setOverride(null)
                                         await refresh()
-                                        if (prefs.showSuccessToasts !== false) {
+                                        if (ok && prefs.showSuccessToasts !== false) {
                                             await showToast({
                                                 style: Toast.Style.Success,
                                                 title: "Manual keep-awake cleared",

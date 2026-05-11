@@ -6,15 +6,11 @@ import { BRIDGE_PATH } from "../utils/paths"
 
 type Mode = PhiRewriteMode
 
-interface Preferences {
-    prefillFromClipboard?: boolean
-    showSuccessToasts?: boolean
-    ensureModelReady?: boolean
-}
-
 type TextRewriteCommandProps = {
     mode: Mode
     title: string
+    /** From each form command's command-scoped `prefillFromClipboard` preference. */
+    prefillFromClipboard: boolean
     textPlaceholder?: string
     requiresInstruction?: boolean
 }
@@ -27,6 +23,7 @@ type FormValues = {
 export function TextRewriteCommand({
     mode,
     title,
+    prefillFromClipboard,
     textPlaceholder,
     requiresInstruction = false,
 }: TextRewriteCommandProps) {
@@ -36,7 +33,7 @@ export function TextRewriteCommand({
     const [result, setResult] = useState<string | null>(null)
 
     useEffect(() => {
-        if (prefs.prefillFromClipboard === false) {
+        if (prefillFromClipboard === false) {
             setDefaultText("")
             setIsLoadingClipboard(false)
             return
@@ -46,7 +43,7 @@ export function TextRewriteCommand({
             .then(text => setDefaultText(text ?? ""))
             .catch(() => setDefaultText(""))
             .finally(() => setIsLoadingClipboard(false))
-    }, [])
+    }, [prefillFromClipboard])
 
     const handleSubmit = async (values: FormValues) => {
         const text = values.text.trim()
@@ -79,6 +76,7 @@ export function TextRewriteCommand({
             if (mode === "custom" && !instruction) {
                 toast.style = Toast.Style.Failure
                 toast.title = "No Instruction Provided"
+                toast.message = "Enter how you want the text rewritten, then submit again."
                 return
             }
 

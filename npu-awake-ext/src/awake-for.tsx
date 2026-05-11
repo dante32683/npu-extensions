@@ -42,22 +42,23 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
         }
 
         const expiry = Math.floor(Date.now() / 1000) + mins * 60
-        await setOverride({ mode: "timed", expiryEpochSeconds: expiry })
-        if (prefs.showSuccessToasts !== false) {
+        const ok = await setOverride({ mode: "timed", expiryEpochSeconds: expiry })
+        if (ok && prefs.showSuccessToasts !== false) {
             await showToast({
                 style: Toast.Style.Success,
                 title: `PC Will Stay Awake for ${mins} Minute(s)`,
                 message: lidNote,
             })
         }
-        pop()
+        if (ok) pop()
     }
 
     if (duration) {
         const mins = parseInt(duration)
         if (!isNaN(mins) && mins > 0) {
             const expiry = Math.floor(Date.now() / 1000) + mins * 60
-            void setOverride({ mode: "timed", expiryEpochSeconds: expiry }).then(() => {
+            void setOverride({ mode: "timed", expiryEpochSeconds: expiry }).then(ok => {
+                if (!ok) return
                 if (prefs.showSuccessToasts !== false) {
                     void showToast({
                         style: Toast.Style.Success,

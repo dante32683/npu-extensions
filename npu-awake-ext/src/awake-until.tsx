@@ -50,15 +50,15 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
             return
         }
 
-        await setOverride({ mode: "until", expiryEpochSeconds: targetEpoch })
-        if (prefs.showSuccessToasts !== false) {
+        const ok = await setOverride({ mode: "until", expiryEpochSeconds: targetEpoch })
+        if (ok && prefs.showSuccessToasts !== false) {
             await showToast({
                 style: Toast.Style.Success,
                 title: `PC Will Stay Awake Until ${values.time}`,
                 message: lidNote,
             })
         }
-        pop()
+        if (ok) pop()
     }
 
     function parseTimeString(t: string): number | null {
@@ -77,7 +77,8 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
     if (time) {
         const targetEpoch = parseTimeString(time)
         if (targetEpoch && targetEpoch > Math.floor(Date.now() / 1000)) {
-            void setOverride({ mode: "until", expiryEpochSeconds: targetEpoch }).then(() => {
+            void setOverride({ mode: "until", expiryEpochSeconds: targetEpoch }).then(ok => {
+                if (!ok) return
                 if (prefs.showSuccessToasts !== false) {
                     void showToast({
                         style: Toast.Style.Success,

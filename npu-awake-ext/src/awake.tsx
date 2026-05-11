@@ -7,28 +7,38 @@ interface Preferences {
 }
 
 export default async function Command() {
-    const prefs = getPreferenceValues<Preferences>()
-    const { defaultAwakeMode } = prefs
-    const status = await getKeeperStatus()
+    try {
+        const prefs = getPreferenceValues<Preferences>()
+        const defaultAwakeMode: Preferences["defaultAwakeMode"] =
+            prefs.defaultAwakeMode === "screen-off" ? "screen-off" : "indefinite"
+        const status = await getKeeperStatus()
 
-    if (status.override && status.override.mode === defaultAwakeMode && !status.override.expiryEpochSeconds) {
-        await setOverride(null)
-        if (prefs.showSuccessToasts !== false) {
-            await showToast({
-                style: Toast.Style.Success,
-                title: "PC Can Now Sleep",
-            })
+        if (status.override && status.override.mode === defaultAwakeMode && !status.override.expiryEpochSeconds) {
+            const ok = await setOverride(null)
+            if (ok && prefs.showSuccessToasts !== false) {
+                await showToast({
+                    style: Toast.Style.Success,
+                    title: "PC Can Now Sleep",
+                })
+            }
+        } else {
+            const ok = await setOverride({ mode: defaultAwakeMode })
+            if (ok && prefs.showSuccessToasts !== false) {
+                await showToast({
+                    style: Toast.Style.Success,
+                    title:
+                        defaultAwakeMode === "screen-off"
+                            ? "PC Awake, Display Can Sleep"
+                            : "PC Will Stay Awake Indefinitely",
+                })
+            }
         }
-    } else {
-        await setOverride({ mode: defaultAwakeMode })
-        if (prefs.showSuccessToasts !== false) {
-            await showToast({
-                style: Toast.Style.Success,
-                title:
-                    defaultAwakeMode === "screen-off"
-                        ? "PC Awake, Display Can Sleep"
-                        : "PC Will Stay Awake Indefinitely",
-            })
-        }
+    } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err)
+        await showToast({
+            style: Toast.Style.Failure,
+            title: "Awake Failed",
+            message: `Something went wrong (${detail}). Open Awake Dashboard or reinstall the extension if this continues.`,
+        })
     }
 }

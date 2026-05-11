@@ -1,6 +1,6 @@
 # Suite style & UX guide
 
-**Purpose:** Single canonical reference for **user-visible copy**, **Raycast toasts**, **action layout**, **bridge/UI error boundaries**, and **TypeScript / C# hygiene** across all `*-ext` packages. New work must match these rules; drift is tracked as cleanup items in [`FEATURE_PLAN.md`](../FEATURE_PLAN.md) under **Cleanup follow-ups**.
+**Purpose:** Single canonical reference for **user-visible copy**, **Raycast toasts**, **action layout**, **Raycast `package.json` preferences** (extension vs command scope), **bridge/UI error boundaries**, and **TypeScript / C# hygiene** across all `*-ext` packages. New work must match these rules; drift is tracked as cleanup items in [`FEATURE_PLAN.md`](../FEATURE_PLAN.md) under **Cleanup follow-ups**.
 
 **Audience:** Human contributors and AI-assisted edits. Prefer loading this file over scanning [`FEATURE_PLAN.md`](../FEATURE_PLAN.md) (large planning archive).
 
@@ -71,6 +71,21 @@ The script writes a JSON report to `scripts/audit-toasts.report.json` (gitignore
 - The TS UI layer translates `{ ok: false, error }` into a `Toast.Style.Failure` toast using the template above. **No `throw` reaches the React render path.**
 - Bridge `Program.cs` always emits exactly one JSON line on stdout, regardless of error. Stack traces and developer diagnostics go to stderr and are logged with `console.error("[<BridgeName>]", stderr)` in TS — never parsed.
 - Input validation lives at the boundary (form `onSubmit`, argv parsing in `Program.cs`) and produces a `Failure` toast / `{ status: "error", ... }` JSON respectively. No deeper helper revalidates.
+
+## Raycast extension preferences (`package.json`)
+
+Raycast shows **two** preference groups in the Extensions settings UI: **Extension** (top-level `preferences` array) and **per-command** sections (each command’s own `preferences` array). Suite extensions follow this layout so the settings panel stays scannable.
+
+| Where to define | Use when |
+|-----------------|----------|
+| **Extension** (`preferences` on the manifest root) | The value is read from **more than one top-level command** or from **shared helpers** (`selection-rewrite`, `run-bridge`, etc.) where there is no single command context. Examples: `showSuccessToasts`, `ensureModelReady`, knobs shared by several flows. |
+| **Command** (`preferences` inside a specific `commands[]` entry) | The value is read **only** when that command runs (`getPreferenceValues()` merges extension + **current** command prefs). Examples: `npu-notes-ext` semantic search tuning on **Search Notes** only; `npu-awake-ext` **Default Awake Mode** on **Awake** only; `npu-text-tools-ext` **Prefill from clipboard** on each **form** rewrite command. |
+
+**`getPreferenceValues()` scope:** TypeScript should use the generated `Preferences.<CommandPascalCase>` type (from `raycast-env.d.ts`) in the file that implements that command. Shared React components **cannot** infer another command’s scoped prefs — pass them in as **props** from each entrypoint (see `TextRewriteCommand` + the six form commands).
+
+**One logical value, two commands:** Raycast stores command prefs **per command**. If two commands must stay in sync (e.g. **Paste Selection (Quick)** and **Review Selection (Quick)** both expose **Quick rewrite mode**), duplicate the same `preferences` block on each command and keep descriptions explicit: users should set the **same** values on both, or we accept drift until a future hub consolidates UI. Prefer a **single** extension-level pref when strict single-source-of-truth is required and nesting is less important.
+
+**Historical note:** Suite-wide preference UX migration is summarized in [`CHANGELOG.md`](../CHANGELOG.md) under **[Unreleased] / Changed** (“preferences UX” — command-level grouping). When adding a new preference, pick extension vs command using the table above; update this section only if Raycast’s model changes.
 
 ## Code-cleanliness rules (apply when writing or touching any file)
 
