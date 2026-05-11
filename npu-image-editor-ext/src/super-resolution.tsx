@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Form, Icon, Toast, getPreferenceValues, showToast } from "@raycast/api"
+import { Action, ActionPanel, Form, Icon, Toast, getPreferenceValues, showToast, open } from "@raycast/api"
 import { useEffect, useState } from "react"
 import { SelectedFile, getSelectedExplorerFiles } from "./utils/powershell-utils"
 import { runNpuCommand } from "./utils/run-npu-command"
@@ -7,10 +7,12 @@ const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".gif", ".we
 
 interface Preferences {
     defaultScaleFactor: string
+    showSuccessToasts?: boolean
+    autoOpenResult?: boolean
 }
 
 export default function Command() {
-    const { defaultScaleFactor } = getPreferenceValues<Preferences>()
+    const prefs = getPreferenceValues<Preferences>()
     const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
@@ -41,20 +43,30 @@ export default function Command() {
 
         let successCount = 0
         let firstError: string | null = null
+        let lastOutputPath: string | null = null
 
         for (const file of selectedFiles) {
             const outcome = await runNpuCommand("super-resolution", [file.path, values.factor])
             if (outcome.ok) {
                 successCount++
+                lastOutputPath = outcome.result.outputPath ?? null
             } else if (firstError === null) {
                 firstError = outcome.error
             }
         }
 
         if (firstError === null) {
-            toast.style = Toast.Style.Success
-            toast.title = "Super Resolution Complete"
-            toast.message = `Upscaled ${successCount} image(s).`
+            if (prefs.showSuccessToasts !== false) {
+                toast.style = Toast.Style.Success
+                toast.title = "Super Resolution Complete"
+                toast.message = `Upscaled ${successCount} image(s).`
+            } else {
+                await toast.hide()
+            }
+
+            if (prefs.autoOpenResult && lastOutputPath) {
+                await open(lastOutputPath)
+            }
         } else {
             toast.style = Toast.Style.Failure
             toast.title = "Super Resolution Failed"
@@ -74,7 +86,7 @@ export default function Command() {
                 </ActionPanel>
             }
         >
-            <Form.Dropdown id="factor" title="Scale Factor" defaultValue={defaultScaleFactor}>
+            <Form.Dropdown id="factor" title="Scale Factor" defaultValue={prefs.defaultScaleFactor}>
                 <Form.Dropdown.Item value="2" title="2x" />
                 <Form.Dropdown.Item value="4" title="4x" />
             </Form.Dropdown>

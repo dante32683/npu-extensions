@@ -10,9 +10,9 @@ import {
     environment,
     useNavigation,
     getPreferenceValues,
+    open,
 } from "@raycast/api"
 import { useCallback, useEffect, useState } from "react"
-import { execFile } from "child_process"
 import path from "path"
 import fs from "fs"
 import { getSelectedExplorerFiles, getClipboardImage, SelectedFile } from "./utils/powershell-utils"
@@ -20,12 +20,20 @@ import { runNpuCommand } from "./utils/run-npu-command"
 
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".gif", ".webp"]
 
+interface Preferences {
+    /** Command-level preference on Extract Text (OCR). */
+    autoOpenTxt?: boolean
+    autoOpenResult?: boolean
+    showSuccessToasts?: boolean
+}
+
 type OcrResult = {
     file: string
     text: string
 }
 
 export function ExtractTextForm() {
+    const prefs = getPreferenceValues<Preferences>()
     const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [extractedText, setExtractedText] = useState<string | null>(null)
@@ -51,9 +59,6 @@ export function ExtractTextForm() {
 
     const runOcr = async (outputMode: string) => {
         if (selectedFiles.length === 0) return
-
-        const preferences = getPreferenceValues<{ autoOpenTxt: boolean }>()
-        const autoOpen = preferences.autoOpenTxt
 
         const toast = await showToast({
             style: Toast.Style.Animated,
@@ -100,17 +105,27 @@ export function ExtractTextForm() {
                 return
             }
 
-            toast.style = Toast.Style.Success
-            toast.title = "Text Extracted"
-            toast.message = `Saved to ocr_results.txt`
+            if (prefs.showSuccessToasts !== false) {
+                toast.style = Toast.Style.Success
+                toast.title = "Text Extracted"
+                toast.message = `Saved to ocr_results.txt`
+            } else {
+                await toast.hide()
+            }
 
-            if (autoOpen) {
-                execFile("powershell.exe", ["-NoProfile", "-Command", `Invoke-Item '${outputPath}'`])
+            const openTxt =
+                prefs.autoOpenTxt !== undefined ? prefs.autoOpenTxt !== false : prefs.autoOpenResult !== false
+            if (openTxt) {
+                await open(outputPath)
             }
             pop()
         } else {
-            toast.style = Toast.Style.Success
-            toast.title = "Text Extracted"
+            if (prefs.showSuccessToasts !== false) {
+                toast.style = Toast.Style.Success
+                toast.title = "Text Extracted"
+            } else {
+                await toast.hide()
+            }
             setExtractedText(formattedText)
         }
     }

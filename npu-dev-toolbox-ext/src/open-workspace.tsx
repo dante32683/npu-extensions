@@ -26,7 +26,7 @@ const ACTION_LABELS: Record<ActionKey, string> = {
     all: "Open All",
 }
 
-function getLauncherPrefs(): LauncherPrefs & { defaultOpenTarget: DefaultOpenTarget } {
+function getLauncherPrefs(): LauncherPrefs & { defaultOpenTarget: DefaultOpenTarget; showSuccessToasts?: boolean } {
     const prefs = getPreferenceValues<Preferences.OpenWorkspace>()
     return {
         defaultOpenTarget: prefs.defaultOpenTarget as DefaultOpenTarget,
@@ -36,10 +36,15 @@ function getLauncherPrefs(): LauncherPrefs & { defaultOpenTarget: DefaultOpenTar
         terminalCustomPath: prefs.terminalCustomPath ?? "",
         ideChoice: prefs.ideChoice,
         ideCustomPath: prefs.ideCustomPath ?? "",
+        showSuccessToasts: prefs.showSuccessToasts,
     }
 }
 
-async function runLauncher(action: ActionKey, folderPath: string, prefs: LauncherPrefs): Promise<void> {
+async function runLauncher(
+    action: ActionKey,
+    folderPath: string,
+    prefs: LauncherPrefs & { showSuccessToasts?: boolean },
+): Promise<void> {
     const label = ACTION_LABELS[action]
     const toast = await showToast({ style: Toast.Style.Animated, title: `${label}...` })
 
@@ -60,9 +65,13 @@ async function runLauncher(action: ActionKey, folderPath: string, prefs: Launche
     }
 
     if (outcome.ok) {
-        toast.style = Toast.Style.Success
-        toast.title = `${label} Started`
-        toast.message = folderPath
+        if (prefs.showSuccessToasts !== false) {
+            toast.style = Toast.Style.Success
+            toast.title = `${label} Started`
+            toast.message = folderPath
+        } else {
+            await toast.hide()
+        }
         await pushRecentWorkspace(folderPath)
     } else {
         toast.style = Toast.Style.Failure
@@ -83,7 +92,10 @@ function listSubfolders(folderPath: string): string[] {
     }
 }
 
-async function runDefaultLauncher(folderPath: string, prefs: LauncherPrefs & { defaultOpenTarget: DefaultOpenTarget }) {
+async function runDefaultLauncher(
+    folderPath: string,
+    prefs: LauncherPrefs & { defaultOpenTarget: DefaultOpenTarget; showSuccessToasts?: boolean },
+) {
     await runLauncher(prefs.defaultOpenTarget, folderPath, prefs)
 }
 
@@ -93,7 +105,7 @@ function SubfolderBrowser({
     onMutate,
 }: {
     rootFolder: string
-    prefs: LauncherPrefs & { defaultOpenTarget: DefaultOpenTarget }
+    prefs: LauncherPrefs & { defaultOpenTarget: DefaultOpenTarget; showSuccessToasts?: boolean }
     onMutate: () => void
 }) {
     const { push } = useNavigation()
@@ -206,7 +218,7 @@ function FolderPickerForm({ onPicked }: { onPicked: (folderPath: string) => void
 
 function workspaceActions(
     folderPath: string,
-    prefs: LauncherPrefs & { defaultOpenTarget: DefaultOpenTarget },
+    prefs: LauncherPrefs & { defaultOpenTarget: DefaultOpenTarget; showSuccessToasts?: boolean },
     options: { onMutate: () => void; push: ReturnType<typeof useNavigation>["push"] },
 ) {
     return (

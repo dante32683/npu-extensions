@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Icon, List, Toast, environment, open, showToast } from "@raycast/api"
+import { Action, ActionPanel, Icon, List, Toast, environment, getPreferenceValues, open, showToast } from "@raycast/api"
 import fs from "fs"
 import os from "os"
 import path from "path"
@@ -7,6 +7,7 @@ import { useMemo, useState } from "react"
 import { promisify } from "util"
 import { getAllNotes, getNotesFolder, Note } from "./utils/note-utils"
 import { ensureBridgeRegisteredOnce } from "./utils/ensure-bridge-registered"
+import { applyPhiFailureToToast } from "./utils/present-phi-error"
 
 const execFileAsync = promisify(execFile)
 
@@ -14,6 +15,10 @@ const BRIDGE_PATH = path.join(environment.assetsPath, "bin", "NpuBridge.exe")
 const BRIDGE_BIN_DIR = path.join(environment.assetsPath, "bin")
 const BRIDGE_MANIFEST_SOURCE = path.join(environment.assetsPath, "..", "bridge", "Package.appxmanifest")
 const BRIDGE_IDENTITY = "NpuNotesBridge.Identity"
+
+interface Preferences {
+    ensureModelReady?: boolean
+}
 
 const MAX_CANDIDATES = 20
 const MAX_LINKS = 5
@@ -45,7 +50,7 @@ function noteIdFromPath(rootFolder: string, filePath: string): string {
     return rel.endsWith(".md") ? rel.slice(0, -3) : rel
 }
 
-async function runRelatedBridge(request: RelatedRequest): Promise<{ related: string[] }> {
+async function runRelatedBridge(request: RelatedRequest, ensureReady: boolean): Promise<{ related: string[] }> {
     if (!fs.existsSync(BRIDGE_PATH)) {
         throw new Error("Bridge not found. Run: dotnet publish -c Release -r win-x64 --self-contained true.")
     }
@@ -63,7 +68,10 @@ async function runRelatedBridge(request: RelatedRequest): Promise<{ related: str
         let stdout = ""
         let stderr = ""
         try {
-            const result = await execFileAsync(BRIDGE_PATH, ["phi-related", tempFile], {
+            const args = ["phi-related", tempFile]
+            if (ensureReady) args.push("--ensure-ready")
+
+            const result = await execFileAsync(BRIDGE_PATH, args, {
                 cwd: path.dirname(BRIDGE_PATH),
                 windowsHide: true,
                 maxBuffer: 10 * 1024 * 1024,
@@ -87,6 +95,7 @@ async function runRelatedBridge(request: RelatedRequest): Promise<{ related: str
 }
 
 export default function Command() {
+    const prefs = getPreferenceValues<Preferences>()
     const [searchText, setSearchText] = useState("")
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
     const [relatedIds, setRelatedIds] = useState<string[] | null>(null)
@@ -166,7 +175,7 @@ export default function Command() {
                 maxLinks: MAX_LINKS,
             }
 
-            const { related } = await runRelatedBridge(request)
+            const { related } = await runRelatedBridge(request, prefs.ensureModelReady !== false)
 
             const candidateSet = new Set(request.candidates.map(c => c.path))
             const cleaned = related.filter(p => typeof p === "string" && candidateSet.has(p))
@@ -178,9 +187,7 @@ export default function Command() {
             toast.message =
                 cleaned.length === 0 ? "No related notes found." : `Found ${cleaned.length} related note(s).`
         } catch (err) {
-            toast.style = Toast.Style.Failure
-            toast.title = "Find Related Notes Failed"
-            toast.message = err instanceof Error ? err.message : String(err)
+            await applyPhiFailureToToast(toast, err, { title: "Find Related Notes Failed" })
         } finally {
             setIsFinding(false)
         }

@@ -6,6 +6,7 @@ Extension-specific detail for **`npu-image-editor-ext`**. Suite workflow: **`CON
 
 - `src/`: Raycast extension source code (TypeScript/React).
   - `modify-image.tsx`: Main UI and bridge integration.
+  - **Roadmap §1 prefs:** `package.json` — auto-open results, success toasts, `ensureModelReady` / `--ensure-ready`, per-command OCR auto-open text.
   - `utils/powershell-utils.ts`: Explorer/Clipboard integration logic.
 - `bridge/`: C# Bridge source code (WinRT interface).
   - `NpuBridge.csproj`: Project file targeting Windows 11 SDK.

@@ -1,0 +1,188 @@
+using Microsoft.Windows.AI;
+using Microsoft.Windows.AI.Text;
+
+var readyState = LanguageModel.GetReadyState();
+if (readyState is AIFeatureReadyState.Ready or AIFeatureReadyState.NotReady)
+{
+    if (readyState == AIFeatureReadyState.NotReady)
+    {
+        var op = await LanguageModel.EnsureReadyAsync();
+    }
+
+    using LanguageModel languageModel = await LanguageModel.CreateAsync();
+
+    string prompt = "Tell me a short story";
+
+    var result = languageModel.GenerateResponseAsync(prompt);
+
+    result.Progress += (sender, args) =>
+    {
+        Console.Write(args);
+    };
+
+    await result;
+}
+
+
+---
+title: Get started with Phi Silica in the Windows App SDK
+description: Learn about the Phi Silica APIs that ship with the Windows App SDK that you can use to access local language models for local processing and generation of chat, math solving, code generation, reasoning over text, and more.
+ms.topic: get-started
+ms.date: 01/21/2026
+dev_langs:
+- csharp
+- cpp
+---
+
+# Get started with Phi Silica
+
+> [!IMPORTANT]
+> The Phi Silica APIs are part of a Limited Access Feature (see [LimitedAccessFeatures class](/uwp/api/windows.applicationmodel.limitedaccessfeatures)). For more information or to request an unlock token, please use the [LAF Access Token Request Form](https://go.microsoft.com/fwlink/?linkid=2271232&c1cid=04x409).
+
+Phi Silica is a powerful NPU-tuned local language model that provides many capabilities found in Large Language Models (LLMs). The model employs a technique called speculative decoding to accelerate text generation using a smaller draft model that can propose multiple token sequences and be validated in parallel by the main model.
+
+> [!NOTE]
+> **Phi Silica features are not available in China.**
+
+Phi Silica is optimized for efficiency and performance on Windows Copilot+ PCs and can be integrated into your Windows apps through the Windows AI APIs in the Windows App SDK.
+
+This level of optimization is not available in other versions of Phi.
+
+For API details, see:
+
+- [microsoft.windows.ai](/windows/windows-app-sdk/api/winrt/microsoft.windows.ai)
+- [microsoft.windows.ai.imaging](/windows/windows-app-sdk/api/winrt/microsoft.windows.ai.imaging)
+- [microsoft.windows.ai.text](/windows/windows-app-sdk/api/winrt/microsoft.windows.ai.text)
+
+## Integrate Phi Silica
+
+With a local Phi Silica language model you can generate text responses to user prompts. First, ensure you have the pre-requisites and models available on your device as outlined in [Getting Started with Windows AI APIs](index.md).
+
+### Specify the required namespaces
+
+To use Phi Silica, make sure you are using the required namespaces:
+
+```csharp
+using Microsoft.Windows.AI;
+using Microsoft.Windows.AI.Text;
+```
+
+```cppwinrt
+#include "winrt/Microsoft.Windows.AI.Text.h"
+using namespace Microsoft::Windows::AI;
+using namespace Microsoft::Windows::AI::Text;
+```
+
+### Generate a response
+
+This example shows how to generate a response to a Q&A prompt with custom content moderation (see [Content Moderation with the Windows AI APIs](./content-moderation.md)).
+
+1. Ensure the language model is available by calling the [**GetReadyState**](/windows/windows-app-sdk/api/winrt/microsoft.windows.ai.text.languagemodel.getreadystate) method and waiting for the [**EnsureReadyAsync**](/windows/windows-app-sdk/api/winrt/microsoft.windows.ai.text.languagemodel.ensurereadyasync) method to return successfully.
+
+2. Once the language model is available, create a [**LanguageModel**](/windows/windows-app-sdk/api/winrt/microsoft.windows.ai.text.languagemodel) object to reference it.
+
+3. Submit a string prompt to the model using the [**GenerateResponseAsync**](/windows/windows-app-sdk/api/winrt/microsoft.windows.ai.text.languagemodel.generateresponseasync) method, which returns the complete result.
+
+```csharp
+if (LanguageModel.GetReadyState() == AIFeatureReadyState.NotReady) 
+{ 
+   var op = await LanguageModel.EnsureReadyAsync(); 
+} 
+
+using LanguageModel languageModel = await LanguageModel.CreateAsync();
+
+string prompt = "Provide the molecular formula for glucose.";
+
+LanguageModelOptions options = new LanguageModelOptions();
+ContentFilterOptions filterOptions = new ContentFilterOptions();
+filterOptions.PromptMaxAllowedSeverityLevel.Violent = SeverityLevel.Minimum;
+options.ContentFilterOptions = filterOptions;
+
+var result = await languageModel.GenerateResponseAsync(prompt, options);
+ 
+Console.WriteLine(result.Text);
+```
+
+```cppwinrt
+if (LanguageModel::GetReadyState() == AIFeatureReadyState::NotReady)
+{
+    auto op = LanguageModel::EnsureReadyAsync().get();
+}
+
+auto languageModel = LanguageModel::CreateAsync().get();
+
+const winrt::hstring prompt = L"Provide the molecular formula for glucose.";
+
+LanguageModelResponseResult result = languageModel.GenerateResponseAsync(prompt).get();
+std::cout << result.Text().c_str() << std::endl;
+```
+
+The response generated by this example is:
+
+```output
+C6H12O6
+```
+
+### Text Intelligence Skills
+
+Phi Silica includes built-in text transformation capabilities (known as Text Intelligence Skills) that can deliver structured, concise, and user-friendly responses through predefined formatting using a local language model.
+
+Supported skills include:
+
+- Text-to-table: Formats the prompt response into a structured table format, when appropriate.
+- Summarize: Returns a concise summary of the prompt text.
+- Rewrite: Rephrases the prompt text to optimize clarity, readability, and, when specified, tone (or style).
+
+The following steps describe how to use Text Intelligence Skills.
+
+1. **Create a LanguageModel object**  
+    This object references the local Phi Silica model (remember to confirm that the Phi Silica model is available on the device).
+
+1. **Instantiate the skill-specific object**  
+    Choose the appropriate class based on the skill you want to apply and pass the [**LanguageModel**](/windows/windows-app-sdk/api/winrt/microsoft.windows.ai.text.languagemodel) instance as a parameter.
+
+1. **Call the method to perform the skill**  
+    Each skill exposes an asynchronous method that processes the input and returns a formatted result.
+
+1. **Handle the response**  
+    The result is returned as a typed object, which you can print or log as needed.
+
+This example demonstrates the text summarizing skill.
+
+1. Create a [**LanguageModel**](/windows/windows-app-sdk/api/winrt/microsoft.windows.ai.text.languagemodel) instance (`languageModel`).
+1. Pass that [**LanguageModel**](/windows/windows-app-sdk/api/winrt/microsoft.windows.ai.text.languagemodel) to the [**TextSummarizer**](/windows/windows-app-sdk/api/winrt/microsoft.windows.ai.text.textsummarizer) constructor.
+1. Pass some text to the [**SummarizeAsync**](/windows/windows-app-sdk/api/winrt/microsoft.windows.ai.text.textsummarizer.summarizeasync) method and print the result.
+
+```csharp
+using namespace Microsoft.Windows.AI.Text;
+
+using LanguageModel languageModel = await LanguageModel.CreateAsync();
+
+var textSummarizer = new TextSummarizer(languageModel);
+string text = @"This is a large amount of text I want to have summarized.";
+var result = await textSummarizer.SummarizeAsync(text);
+
+Console.WriteLine(result.Text); 
+```
+
+```cppwinrt
+using namespace Microsoft::Windows::AI::Text;
+
+auto languageModel = LanguageModel::CreateAsync().get();
+auto textSummarizer = TextSummarizer(languageModel);
+std::string prompt = "This is a large amount of text I want to have summarized.";
+auto result = textSummarizer.SummarizeAsync(prompt);
+
+std::wcout << result.get().Text() << std::endl;
+```
+
+---
+
+## Responsible AI
+
+We've followed core principles and practices described in the [Microsoft Responsible AI Standards](https://www.microsoft.com/ai/principles-and-approach) to ensure these APIs are trustworthy, secure, and built responsibly. For more details on implementing AI features in your app, see [Responsible Generative AI Development on Windows](/windows/ai/rai).
+
+## See also
+
+- [AI Dev Gallery](https://github.com/microsoft/ai-dev-gallery/)
+- [Windows AI API samples](https://github.com/microsoft/WindowsAppSDK-Samples/tree/release/experimental/Samples/WindowsAIFoundry)

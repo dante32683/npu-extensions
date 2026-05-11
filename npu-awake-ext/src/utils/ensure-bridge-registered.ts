@@ -12,20 +12,33 @@ type EnsureOptions = {
     manifestSourcePath: string
 }
 
-async function isInstalled(identityName: string): Promise<boolean> {
+async function getInstalledLocation(identityName: string): Promise<string | null> {
     try {
         const { stdout } = await execFileAsync(
             "powershell.exe",
             [
                 "-NoProfile",
                 "-Command",
-                `if (Get-AppxPackage -Name '${identityName}' -ErrorAction SilentlyContinue) { '1' } else { '0' }`,
+                `$p = Get-AppxPackage -Name '${identityName}' -ErrorAction SilentlyContinue; if ($p) { $p.InstallLocation } else { '' }`,
             ],
             { windowsHide: true },
         )
-        return stdout.toString().trim() === "1"
+        const loc = stdout.toString().trim()
+        return loc || null
     } catch {
-        return false
+        return null
+    }
+}
+
+async function removePackage(identityName: string): Promise<void> {
+    try {
+        await execFileAsync(
+            "powershell.exe",
+            ["-NoProfile", "-Command", `Remove-AppxPackage -Package (Get-AppxPackage -Name '${identityName}').PackageFullName -ErrorAction SilentlyContinue`],
+            { windowsHide: true },
+        )
+    } catch {
+        // ignore — best effort
     }
 }
 
@@ -42,7 +55,9 @@ export async function ensureBridgeRegisteredOnce({
     binDir,
     manifestSourcePath,
 }: EnsureOptions): Promise<void> {
-    const key = `bridge:registered:${identityName}`
+    // Cache key includes binDir so the cache misses when the extension moves paths
+    // (e.g. from dev source to Raycast's imported copy).
+    const key = `bridge:registered:${identityName}:${binDir.replace(/[^a-z0-9]/gi, "_")}`
     const cached = await LocalStorage.getItem<string>(key)
     if (cached === "1") return
 
@@ -56,16 +71,24 @@ export async function ensureBridgeRegisteredOnce({
         return
     }
 
-    if (await isInstalled(identityName)) {
-        await LocalStorage.setItem(key, "1")
-        return
+    const installedAt = await getInstalledLocation(identityName)
+    if (installedAt) {
+        const norm = (p: string) => p.replace(/[\\/]+$/, "").toLowerCase()
+        if (norm(installedAt) === norm(binDir)) {
+            // Already registered at the right path.
+            await LocalStorage.setItem(key, "1")
+            return
+        }
+        // Registered at a different path — remove and re-register at binDir.
+        await removePackage(identityName)
     }
 
     await startElevatedRegister(manifestDestPath, binDir)
 
     const deadline = Date.now() + 30_000
     while (Date.now() < deadline) {
-        if (await isInstalled(identityName)) {
+        const loc = await getInstalledLocation(identityName)
+        if (loc) {
             await LocalStorage.setItem(key, "1")
             return
         }

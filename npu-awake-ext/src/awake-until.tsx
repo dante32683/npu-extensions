@@ -12,6 +12,8 @@ import { setOverride } from "./utils/keeper-utils"
 
 interface Preferences {
     showLidNote: boolean
+    showSuccessToasts?: boolean
+    defaultUntilTime?: string
 }
 
 interface Arguments {
@@ -19,7 +21,8 @@ interface Arguments {
 }
 
 export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
-    const { showLidNote } = getPreferenceValues<Preferences>()
+    const prefs = getPreferenceValues<Preferences>()
+    const { showLidNote } = prefs
     const { pop } = useNavigation()
     const { time } = props.arguments
 
@@ -48,11 +51,13 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
         }
 
         await setOverride({ mode: "until", expiryEpochSeconds: targetEpoch })
-        await showToast({
-            style: Toast.Style.Success,
-            title: `PC Will Stay Awake Until ${values.time}`,
-            message: lidNote,
-        })
+        if (prefs.showSuccessToasts !== false) {
+            await showToast({
+                style: Toast.Style.Success,
+                title: `PC Will Stay Awake Until ${values.time}`,
+                message: lidNote,
+            })
+        }
         pop()
     }
 
@@ -72,13 +77,15 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
     if (time) {
         const targetEpoch = parseTimeString(time)
         if (targetEpoch && targetEpoch > Math.floor(Date.now() / 1000)) {
-            void setOverride({ mode: "until", expiryEpochSeconds: targetEpoch }).then(() =>
-                showToast({
-                    style: Toast.Style.Success,
-                    title: `PC Will Stay Awake Until ${time}`,
-                    message: lidNote,
-                }),
-            )
+            void setOverride({ mode: "until", expiryEpochSeconds: targetEpoch }).then(() => {
+                if (prefs.showSuccessToasts !== false) {
+                    void showToast({
+                        style: Toast.Style.Success,
+                        title: `PC Will Stay Awake Until ${time}`,
+                        message: lidNote,
+                    })
+                }
+            })
             return null
         }
     }
@@ -95,7 +102,7 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
                 id="time"
                 title="Until Time"
                 placeholder="e.g. 17:30"
-                defaultValue={time}
+                defaultValue={time ?? prefs.defaultUntilTime ?? ""}
                 info="Keep the system and display awake until this time today."
             />
         </Form>

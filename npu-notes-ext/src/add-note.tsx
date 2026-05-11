@@ -18,6 +18,7 @@ import fs from "fs"
 import os from "os"
 import { getNotesFolder, saveNote } from "./utils/note-utils"
 import { ensureBridgeRegisteredOnce } from "./utils/ensure-bridge-registered"
+import { applyPhiFailureToToast } from "./utils/present-phi-error"
 
 const execFileAsync = promisify(execFile)
 const BRIDGE_PATH = path.join(environment.assetsPath, "bin", "NpuBridge.exe")
@@ -27,6 +28,8 @@ const BRIDGE_IDENTITY = "NpuNotesBridge.Identity"
 
 interface Preferences {
     prefillFromClipboard?: boolean
+    showSuccessToasts?: boolean
+    ensureModelReady?: boolean
 }
 
 interface FormValues {
@@ -90,7 +93,13 @@ export default function Command() {
 
             let stdout = ""
             try {
-                const result = await execFileAsync(BRIDGE_PATH, ["phi-note", tempFile], {
+                // Pass --ensure-ready if pref is set
+                const args = ["phi-note", tempFile]
+                if (prefs.ensureModelReady !== false) {
+                    args.push("--ensure-ready")
+                }
+
+                const result = await execFileAsync(BRIDGE_PATH, args, {
                     cwd: path.dirname(BRIDGE_PATH),
                     windowsHide: true,
                     maxBuffer: 10 * 1024 * 1024,
@@ -122,20 +131,22 @@ export default function Command() {
                 formattedMarkdown,
             )
 
-            toast.style = Toast.Style.Success
-            toast.title = "Note Saved"
-            toast.message = `${category}/${path.basename(filePath)}`
+            if (prefs.showSuccessToasts !== false) {
+                toast.style = Toast.Style.Success
+                toast.title = "Note Saved"
+                toast.message = `${category}/${path.basename(filePath)}`
 
-            toast.primaryAction = {
-                title: "Open Note",
-                onAction: () => {
-                    open(filePath)
-                },
+                toast.primaryAction = {
+                    title: "Open Note",
+                    onAction: () => {
+                        open(filePath)
+                    },
+                }
+            } else {
+                await toast.hide()
             }
         } catch (err: unknown) {
-            toast.style = Toast.Style.Failure
-            toast.title = "Phi-Silica Error"
-            toast.message = err instanceof Error ? err.message : String(err)
+            await applyPhiFailureToToast(toast, err)
         } finally {
             if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile)
         }

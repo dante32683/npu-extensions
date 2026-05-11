@@ -1,4 +1,4 @@
-import { environment } from "@raycast/api"
+import { environment, getPreferenceValues } from "@raycast/api"
 import { execFile } from "child_process"
 import { promisify } from "util"
 import path from "path"
@@ -27,6 +27,10 @@ export type NpuBridgeResult = {
 
 export type NpuCommandOutcome = { ok: true; result: NpuBridgeResult } | { ok: false; error: string }
 
+interface Preferences {
+    ensureModelReady?: boolean
+}
+
 // Single source of truth for spawning the image-editor NPU bridge. Every command
 // (modify-image, super-resolution, extract-text, make-sticker, ...) goes through
 // this helper so spawn invariants (cwd, windowsHide), error templates, and
@@ -46,7 +50,13 @@ export async function runNpuCommand(command: string, args: string[]): Promise<Np
             manifestSourcePath: BRIDGE_MANIFEST_SOURCE,
         })
 
-        const { stdout, stderr } = await execFileAsync(BRIDGE_PATH, [command, ...args], {
+        const prefs = getPreferenceValues<Preferences>()
+        const finalArgs = [command, ...args]
+        if (prefs.ensureModelReady !== false) {
+            finalArgs.push("--ensure-ready")
+        }
+
+        const { stdout, stderr } = await execFileAsync(BRIDGE_PATH, finalArgs, {
             cwd: path.dirname(BRIDGE_PATH),
             windowsHide: true,
         })

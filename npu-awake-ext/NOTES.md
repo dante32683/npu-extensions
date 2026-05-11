@@ -22,6 +22,7 @@ Extension-specific notes for **`npu-awake-ext`**.
   - `awake-natural` behaves like a constrained tool-caller: check status first, then (if needed) call the intent extractor, then execute a stable action.
 - **Intent extractor (C# sparse bridge)**:
   - `bridge/` uses `Microsoft.Windows.AI.Text.LanguageModel`
+  - calls `TryUnlockNpuFeature()` before any `LanguageModel` access (added 2026-05-10 — was missing, caused “Access is denied / Status: 0”). See `docs/RUNBOOK.md` § “Phi-Silica Limited Access Feature”.
   - outputs a small, strict JSON schema (action/mode + raw fields only)
   - must do “surgical JSON extraction” from Phi output (code fences/prose are common)
 - **Executor/daemon (Win32 keeper)**:
@@ -40,3 +41,4 @@ Extension-specific notes for **`npu-awake-ext`**.
 
 - **Planning:** `FEATURE_PLAN.md` §5 (Smart Awake).
 - **Suite workflow:** `CONTRIBUTING.md`, `EXTENSION_REGISTRY.md`, `docs/RUNBOOK.md`.
+- **Roadmap §1 prefs:** Extension `package.json` exposes success toasts, `ensureModelReady` / `--ensure-ready` for Smart Awake, default duration/until time, and Smart Awake schedule fallbacks (`defaultSchedule*`).

@@ -82,6 +82,33 @@
             "description": "Where to save images processed from clipboard. Defaults to Desktop.",
             "type": "directory",
             "required": false
+        },
+        {
+            "name": "autoOpenResult",
+            "title": "Auto Open Result",
+            "description": "Automatically open the resulting image in the default viewer after processing.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Open output file after processing"
+        },
+        {
+            "name": "showSuccessToasts",
+            "title": "Show Success Toasts",
+            "description": "When enabled, shows a success toast after an image operation completes.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Show success notifications"
+        },
+        {
+            "name": "ensureModelReady",
+            "title": "Ensure AI Model Ready",
+            "description": "When enabled, calls EnsureReadyAsync before AI operations to avoid 'NotReady' errors.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Wait for AI model readiness"
         }
     ],
     "dependencies": {

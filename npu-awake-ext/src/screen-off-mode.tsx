@@ -1,20 +1,29 @@
-import { showToast, Toast } from "@raycast/api"
+import { showToast, Toast, getPreferenceValues } from "@raycast/api"
 import { getKeeperStatus, setOverride } from "./utils/keeper-utils"
 
+interface Preferences {
+    showSuccessToasts?: boolean
+}
+
 export default async function Command() {
+    const prefs = getPreferenceValues<Preferences>()
     const status = await getKeeperStatus()
 
     if (status.override && status.override.mode === "screen-off") {
         await setOverride(null)
-        await showToast({
-            style: Toast.Style.Success,
-            title: "PC can now sleep",
-        })
+        if (prefs.showSuccessToasts !== false) {
+            await showToast({
+                style: Toast.Style.Success,
+                title: "PC can now sleep",
+            })
+        }
     } else {
         await setOverride({ mode: "screen-off" })
-        await showToast({
-            style: Toast.Style.Success,
-            title: "PC awake, display can sleep",
-        })
+        if (prefs.showSuccessToasts !== false) {
+            await showToast({
+                style: Toast.Style.Success,
+                title: "PC awake, display can sleep",
+            })
+        }
     }
 }

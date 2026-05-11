@@ -23,7 +23,13 @@ type ExtensionPreferences = {
   /** IDE Custom Path - Full path to a .exe or .lnk to use when 'IDE' is set to 'Custom Path'. */
   "ideCustomPath": string,
   /** Commit Style - Default commit message style for the Commit Message command. */
-  "commitStyle": "conventional" | "plain"
+  "commitStyle": "conventional" | "plain",
+  /** Show Success Toasts - When enabled, shows a success toast after creating a commit or opening a workspace. */
+  "showSuccessToasts": boolean,
+  /** Ensure AI Model Ready - When enabled, calls EnsureReadyAsync before AI operations to avoid 'NotReady' errors. */
+  "ensureModelReady": boolean,
+  /** Workspace Detection Timeout (ms) - Maximum time to wait for PowerShell foreground-window probes (Commit Message / active folder detection). */
+  "foregroundDetectionTimeoutMs": string
 }
 
 /** Preferences accessible in all the extension's commands */

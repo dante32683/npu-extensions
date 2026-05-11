@@ -9,6 +9,7 @@ import {
     getPreferenceValues,
     showToast,
     useNavigation,
+    open,
 } from "@raycast/api"
 import { useCallback, useEffect, useState } from "react"
 import path from "path"
@@ -24,6 +25,8 @@ interface ImageEditorPreferences {
     defaultScaleFactor: string
     defaultJpegQuality: string
     clipboardOutputDir?: string
+    autoOpenResult?: boolean
+    showSuccessToasts?: boolean
 }
 
 function hexToJimpColor(hex: string): number {
@@ -35,7 +38,8 @@ function hexToJimpColor(hex: string): number {
 }
 
 export default function Command() {
-    const { clipboardOutputDir } = getPreferenceValues<ImageEditorPreferences>()
+    const prefs = getPreferenceValues<ImageEditorPreferences>()
+    const { clipboardOutputDir } = prefs
     const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const { push } = useNavigation()
@@ -79,9 +83,17 @@ export default function Command() {
 
         const outcome = await runNpuCommand(command, [file.path, ...extraArgs])
         if (outcome.ok) {
-            toast.style = Toast.Style.Success
-            toast.title = `${friendlyName} Complete`
-            toast.message = outcome.result.message ?? "Processing finished."
+            if (prefs.showSuccessToasts !== false) {
+                toast.style = Toast.Style.Success
+                toast.title = `${friendlyName} Complete`
+                toast.message = outcome.result.message ?? "Processing finished."
+            } else {
+                await toast.hide()
+            }
+
+            if (prefs.autoOpenResult && outcome.result.outputPath) {
+                await open(String(outcome.result.outputPath))
+            }
             fetchSelectedFiles()
         } else {
             toast.style = Toast.Style.Failure
@@ -103,6 +115,7 @@ export default function Command() {
         })
 
         try {
+            let lastOutputPath: string | null = null
             for (const file of selectedFiles) {
                 const dir = path.dirname(file.path)
                 const targetExt = options.format ? `.${options.format}` : file.extension
@@ -119,11 +132,20 @@ export default function Command() {
 
                 const writeOptions = options.quality !== undefined ? { quality: options.quality } : undefined
                 await (image as any).write(outputPath, writeOptions)
+                lastOutputPath = outputPath
             }
 
-            toast.style = Toast.Style.Success
-            toast.title = "Processing Complete"
-            toast.message = `Processed ${selectedFiles.length} image(s)`
+            if (prefs.showSuccessToasts !== false) {
+                toast.style = Toast.Style.Success
+                toast.title = "Processing Complete"
+                toast.message = `Processed ${selectedFiles.length} image(s)`
+            } else {
+                await toast.hide()
+            }
+
+            if (prefs.autoOpenResult && lastOutputPath) {
+                await open(lastOutputPath)
+            }
             fetchSelectedFiles()
         } catch (error) {
             toast.style = Toast.Style.Failure
@@ -141,6 +163,7 @@ export default function Command() {
         })
 
         try {
+            let lastOutputPath: string | null = null
             for (const file of selectedFiles) {
                 const dir = path.dirname(file.path)
                 const newName = `${path.basename(file.name, file.extension)}${suffix}.webp`
@@ -158,11 +181,20 @@ export default function Command() {
                 )
                 const outBytes = await encodeRgbaToWebp(rgba, image.bitmap.width, image.bitmap.height)
                 await fs.promises.writeFile(outputPath, outBytes)
+                lastOutputPath = outputPath
             }
 
-            toast.style = Toast.Style.Success
-            toast.title = "Conversion Complete"
-            toast.message = `Converted ${selectedFiles.length} image(s) to WebP`
+            if (prefs.showSuccessToasts !== false) {
+                toast.style = Toast.Style.Success
+                toast.title = "Conversion Complete"
+                toast.message = `Converted ${selectedFiles.length} image(s) to WebP`
+            } else {
+                await toast.hide()
+            }
+
+            if (prefs.autoOpenResult && lastOutputPath) {
+                await open(lastOutputPath)
+            }
             fetchSelectedFiles()
         } catch (error) {
             toast.style = Toast.Style.Failure

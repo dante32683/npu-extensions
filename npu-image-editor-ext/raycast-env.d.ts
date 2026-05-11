@@ -13,7 +13,13 @@ type ExtensionPreferences = {
   /** Default JPEG Quality - Pre-filled quality (1–100) for the Optimize action. */
   "defaultJpegQuality": string,
   /** Clipboard Image Output - Where to save images processed from clipboard. Defaults to Desktop. */
-  "clipboardOutputDir"?: string
+  "clipboardOutputDir"?: string,
+  /** Auto Open Result - Automatically open the resulting image in the default viewer after processing. */
+  "autoOpenResult": boolean,
+  /** Show Success Toasts - When enabled, shows a success toast after an image operation completes. */
+  "showSuccessToasts": boolean,
+  /** Ensure AI Model Ready - When enabled, calls EnsureReadyAsync before AI operations to avoid 'NotReady' errors. */
+  "ensureModelReady": boolean
 }
 
 /** Preferences accessible in all the extension's commands */

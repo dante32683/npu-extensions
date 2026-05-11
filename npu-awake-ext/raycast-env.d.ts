@@ -12,8 +12,20 @@ type ExtensionPreferences = {
   "defaultAwakeMode": "indefinite" | "screen-off",
   /** Default Duration (minutes) - Pre-filled value for the Awake For command when opened without an argument. */
   "defaultDuration": string,
+  /** Default Until Time - Pre-filled time for Awake Until (HH:mm) when opened without an argument. */
+  "defaultUntilTime": string,
+  /** Default Schedule Start (Smart Awake) - When Smart Awake parses a schedule without a start time, use this HH:mm. */
+  "defaultScheduleStart": string,
+  /** Default Schedule End (Smart Awake) - When Smart Awake parses a schedule without an end time, use this HH:mm. */
+  "defaultScheduleEnd": string,
+  /** Default Schedule Days (Smart Awake) - Comma-separated weekdays when the model omits days: mon,tue,wed,thu,fri,sat,sun. */
+  "defaultScheduleDays": string,
   /** Lid Close Note - Show a note about lid-close / power-button behavior on success toasts. */
-  "showLidNote": boolean
+  "showLidNote": boolean,
+  /** Show Success Toasts - When enabled, shows a success toast after an awake operation. */
+  "showSuccessToasts": boolean,
+  /** Ensure AI Model Ready - When enabled, calls EnsureReadyAsync before AI operations to avoid 'NotReady' errors. */
+  "ensureModelReady": boolean
 }
 
 /** Preferences accessible in all the extension's commands */

@@ -109,7 +109,8 @@ async function generateCommit(arg: string | undefined, style: "conventional" | "
 
 export default function Command(props: LaunchProps<{ arguments: Arguments.CommitMessage }>) {
     const arg = props.arguments?.path?.trim() || undefined
-    const { commitStyle } = getPreferenceValues<Preferences.CommitMessage>()
+    const prefs = getPreferenceValues<Preferences.CommitMessage>()
+    const { commitStyle } = prefs
     const launcherPrefs = getLauncherPrefs()
     const { pop } = useNavigation()
 
@@ -141,13 +142,21 @@ export default function Command(props: LaunchProps<{ arguments: Arguments.Commit
 
         const next = await generateCommit(arg, commitStyle)
         if (next.kind === "ready") {
-            detectingToast.style = Toast.Style.Success
-            detectingToast.title = "Commit Message Ready"
-            detectingToast.message = next.result.subject
+            if (prefs.showSuccessToasts !== false) {
+                detectingToast.style = Toast.Style.Success
+                detectingToast.title = "Commit Message Ready"
+                detectingToast.message = next.result.subject
+            } else {
+                await detectingToast.hide()
+            }
         } else if (next.kind === "no-changes") {
-            detectingToast.style = Toast.Style.Success
-            detectingToast.title = "No Changes to Commit"
-            detectingToast.message = next.repoRoot
+            if (prefs.showSuccessToasts !== false) {
+                detectingToast.style = Toast.Style.Success
+                detectingToast.title = "No Changes to Commit"
+                detectingToast.message = next.repoRoot
+            } else {
+                await detectingToast.hide()
+            }
         } else {
             detectingToast.style = Toast.Style.Failure
             detectingToast.title = "Commit Message Failed"
@@ -227,9 +236,13 @@ export default function Command(props: LaunchProps<{ arguments: Arguments.Commit
                             })
                             const outcome = await runGitCommit(repoRoot, result.subject, result.body)
                             if (outcome.ok) {
-                                toast.style = Toast.Style.Success
-                                toast.title = "Commit Created"
-                                toast.message = result.subject
+                                if (prefs.showSuccessToasts !== false) {
+                                    toast.style = Toast.Style.Success
+                                    toast.title = "Commit Created"
+                                    toast.message = result.subject
+                                } else {
+                                    await toast.hide()
+                                }
                                 pop()
                             } else {
                                 toast.style = Toast.Style.Failure

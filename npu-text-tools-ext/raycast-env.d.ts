@@ -7,7 +7,14 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-type ExtensionPreferences = {}
+type ExtensionPreferences = {
+  /** Prefill From Clipboard - When enabled, text tools pre-fill with clipboard text on launch. */
+  "prefillFromClipboard": boolean,
+  /** Show Success Toasts - When enabled, shows a success toast after a rewrite operation. */
+  "showSuccessToasts": boolean,
+  /** Ensure AI Model Ready - When enabled, calls EnsureReadyAsync before AI operations to avoid 'NotReady' errors. */
+  "ensureModelReady": boolean
+}
 
 /** Preferences accessible in all the extension's commands */
 declare type Preferences = ExtensionPreferences

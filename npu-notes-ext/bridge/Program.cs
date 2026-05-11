@@ -40,6 +40,11 @@ internal static class Program
 
         try
         {
+            if (!TryUnlockNpuFeature())
+            {
+                Console.Error.WriteLine("[NpuBridge] Warning: LAF unlock was not successful, but proceeding.");
+            }
+
             if (LanguageModel.GetReadyState() != AIFeatureReadyState.Ready)
             {
                 Console.Error.WriteLine("[NpuBridge] Phi-Silica model not ready — downloading model weights...");
@@ -126,8 +131,7 @@ Respond with only valid JSON in this exact format:
 
 Raw note:";
 
-        using var ctx = model.CreateContext(systemPrompt);
-        var response = await model.GenerateResponseAsync(ctx, rawNote, new LanguageModelOptions());
+        var response = await model.GenerateResponseAsync($"{systemPrompt}\n\n{rawNote}");
         string jsonOutput = ExtractJsonObject(response.Text);
 
         try 
@@ -160,10 +164,8 @@ Rules:
 - If nothing is meaningfully related, return {{ ""related"": [] }}.
 - DO NOT include explanations, prose, or code fences. JSON only.";
 
-        using var ctx = model.CreateContext(systemPrompt);
         string userPayload = JsonSerializer.Serialize(request, JsonOptions);
-
-        var response = await model.GenerateResponseAsync(ctx, userPayload, new LanguageModelOptions());
+        var response = await model.GenerateResponseAsync($"{systemPrompt}\n\n{userPayload}");
         string jsonOutput = ExtractJsonObject(response.Text);
 
         try
@@ -189,8 +191,6 @@ Rules:
 - Prefer false when uncertain.
 - Do NOT include any explanation, prose, or code fences. JSON only.";
 
-        using var ctx = model.CreateContext(systemPrompt);
-
         // Keep the user payload tiny for Phi-Silica context limits.
         var candidate = request.Candidate ?? throw new InvalidOperationException("Invalid candidate payload.");
         string userPayload =
@@ -201,7 +201,7 @@ Rules:
             $"- category: {candidate.Category}\n" +
             $"- preview: {candidate.Preview}";
 
-        var response = await model.GenerateResponseAsync(ctx, userPayload, new LanguageModelOptions());
+        var response = await model.GenerateResponseAsync($"{systemPrompt}\n\n{userPayload}");
         string jsonOutput = ExtractJsonObject(response.Text);
 
         try
@@ -224,6 +224,46 @@ Rules:
             return trimmed;
 
         return trimmed.Substring(start, end - start + 1);
+    }
+
+    private static bool TryUnlockNpuFeature()
+    {
+        try
+        {
+            string featureId = "com.microsoft.windows.ai.languagemodel";
+
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey($@"SOFTWARE\Microsoft\Windows\CurrentVersion\AppModel\LimitedAccessFeatures\{featureId}");
+            string? lafKey = key?.GetValue("")?.ToString();
+
+            if (string.IsNullOrEmpty(lafKey))
+            {
+                Console.Error.WriteLine($"[NpuBridge] Could not find LAF key for {featureId} in registry.");
+                return false;
+            }
+
+            string pfn = Windows.ApplicationModel.Package.Current.Id.FamilyName;
+
+            string input = $"{featureId}!{lafKey}!{pfn}";
+            byte[] inputBytes = System.Text.Encoding.UTF8.GetBytes(input);
+            byte[] hashBytes = System.Security.Cryptography.SHA256.HashData(inputBytes);
+            byte[] truncatedHash = new byte[16];
+            System.Array.Copy(hashBytes, truncatedHash, 16);
+            string token = Convert.ToBase64String(truncatedHash);
+
+            string publisherId = pfn.Split('_')[1];
+            string attestation = $"{publisherId} has registered their use of {featureId} with Microsoft and agrees to the terms of use.";
+
+            var result = Windows.ApplicationModel.LimitedAccessFeatures.TryUnlockFeature(featureId, token, attestation);
+            Console.Error.WriteLine($"[NpuBridge] LAF Unlock Result: {result.Status} (Feature: {featureId}, PFN: {pfn})");
+
+            return result.Status == Windows.ApplicationModel.LimitedAccessFeatureStatus.Available ||
+                   result.Status == Windows.ApplicationModel.LimitedAccessFeatureStatus.AvailableWithoutToken;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[NpuBridge] LAF Unlock Error: {ex.Message}");
+            return false;
+        }
     }
 
     private static void WriteJson(object payload)

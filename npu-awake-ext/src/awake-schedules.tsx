@@ -1,4 +1,14 @@
-import { Action, ActionPanel, Alert, Icon, List, confirmAlert, showToast, Toast } from "@raycast/api"
+import {
+    Action,
+    ActionPanel,
+    Alert,
+    Icon,
+    List,
+    confirmAlert,
+    getPreferenceValues,
+    showToast,
+    Toast,
+} from "@raycast/api"
 import { useEffect, useMemo, useState } from "react"
 import { getKeeperStatus, KeeperStatus, setSchedules, stopDaemon } from "./utils/keeper-utils"
 
@@ -17,7 +27,12 @@ function formatDays(days: number[]) {
     return sorted.map(d => DOW_LABELS[d] ?? String(d)).join(", ")
 }
 
+interface Prefs {
+    showSuccessToasts?: boolean
+}
+
 export default function Command() {
+    const prefs = getPreferenceValues<Prefs>()
     const [status, setStatus] = useState<KeeperStatus>({ daemonPid: null, override: null, schedules: [] })
     const [isLoading, setIsLoading] = useState(true)
 
@@ -36,7 +51,9 @@ export default function Command() {
     async function toggleEnabled(id: string) {
         const next = status.schedules.map(s => (s.id === id ? { ...s, enabled: !s.enabled } : s))
         await setSchedules(next)
-        await showToast({ style: Toast.Style.Success, title: "Schedule Updated" })
+        if (prefs.showSuccessToasts !== false) {
+            await showToast({ style: Toast.Style.Success, title: "Schedule Updated" })
+        }
         await refresh()
     }
 
@@ -50,7 +67,9 @@ export default function Command() {
         if (!ok) return
         const next = status.schedules.filter(s => s.id !== id)
         await setSchedules(next)
-        await showToast({ style: Toast.Style.Success, title: "Schedule Deleted" })
+        if (prefs.showSuccessToasts !== false) {
+            await showToast({ style: Toast.Style.Success, title: "Schedule Deleted" })
+        }
         await refresh()
     }
 
@@ -62,7 +81,9 @@ export default function Command() {
         })
         if (!ok) return
         await setSchedules([])
-        await showToast({ style: Toast.Style.Success, title: "Schedules Cleared" })
+        if (prefs.showSuccessToasts !== false) {
+            await showToast({ style: Toast.Style.Success, title: "Schedules Cleared" })
+        }
         await refresh()
     }
 
@@ -75,7 +96,9 @@ export default function Command() {
         })
         if (!ok) return
         await stopDaemon()
-        await showToast({ style: Toast.Style.Success, title: "Awake Daemon Stopped" })
+        if (prefs.showSuccessToasts !== false) {
+            await showToast({ style: Toast.Style.Success, title: "Awake Daemon Stopped" })
+        }
         await refresh()
     }
 

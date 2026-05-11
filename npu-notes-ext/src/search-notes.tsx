@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Icon, List, Toast, environment, open, showToast } from "@raycast/api"
+import { Action, ActionPanel, Icon, List, Toast, environment, open, showToast, getPreferenceValues } from "@raycast/api"
 import { execFile } from "child_process"
 import fs from "fs"
 import os from "os"
@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { promisify } from "util"
 import { getAllNotes, getNotesFolder, Note } from "./utils/note-utils"
 import { ensureBridgeRegisteredOnce } from "./utils/ensure-bridge-registered"
+import { showPhiFailureToast } from "./utils/present-phi-error"
 
 const execFileAsync = promisify(execFile)
 
@@ -18,9 +19,15 @@ const BRIDGE_IDENTITY = "NpuNotesBridge.Identity"
 const PREVIEW_CHARS = 280
 const MIN_QUERY_CHARS_FOR_PHI = 3
 const KEYWORD_RESULTS_BEFORE_PHI = 3
-const MAX_PHI_CHECKS = 30
-const MAX_SEMANTIC_HITS = 10
-const SEMANTIC_DEBOUNCE_MS = 650
+const DEFAULT_MAX_PHI_CHECKS = 30
+
+interface Preferences {
+    semanticSearchDebounce?: string
+    maxSemanticChecks?: string
+    maxSemanticResults?: string
+    showSuccessToasts?: boolean
+    ensureModelReady?: boolean
+}
 
 type SearchRelevanceRequest = {
     query: string
@@ -46,7 +53,7 @@ function noteIdFromPath(rootFolder: string, filePath: string): string {
     return rel.endsWith(".md") ? rel.slice(0, -3) : rel
 }
 
-async function runPhiRelevance(request: SearchRelevanceRequest): Promise<boolean> {
+async function runPhiRelevance(request: SearchRelevanceRequest, ensureReady: boolean): Promise<boolean> {
     if (!fs.existsSync(BRIDGE_PATH)) {
         throw new Error("Bridge not found. Run: dotnet publish -c Release -r win-x64 --self-contained true.")
     }
@@ -64,7 +71,10 @@ async function runPhiRelevance(request: SearchRelevanceRequest): Promise<boolean
         let stdout = ""
         let stderr = ""
         try {
-            const result = await execFileAsync(BRIDGE_PATH, ["phi-search-relevance", tempFile], {
+            const args = ["phi-search-relevance", tempFile]
+            if (ensureReady) args.push("--ensure-ready")
+
+            const result = await execFileAsync(BRIDGE_PATH, args, {
                 cwd: path.dirname(BRIDGE_PATH),
                 windowsHide: true,
                 maxBuffer: 10 * 1024 * 1024,
@@ -87,6 +97,11 @@ async function runPhiRelevance(request: SearchRelevanceRequest): Promise<boolean
 }
 
 export default function Command() {
+    const prefs = getPreferenceValues<Preferences>()
+    const debounceMs = parseInt(prefs.semanticSearchDebounce ?? "600", 10)
+    const maxHits = parseInt(prefs.maxSemanticResults ?? "5", 10)
+    const maxPhiChecks = parseInt(prefs.maxSemanticChecks ?? String(DEFAULT_MAX_PHI_CHECKS), 10)
+
     const notesFolder = useMemo(() => getNotesFolder(), [])
     const allNotes = useMemo(() => getAllNotes(notesFolder), [notesFolder])
 
@@ -152,20 +167,10 @@ export default function Command() {
         }
 
         if (query.length < MIN_QUERY_CHARS_FOR_PHI) {
-            await showToast({
-                style: Toast.Style.Failure,
-                title: "Query Too Short",
-                message: `Type at least ${MIN_QUERY_CHARS_FOR_PHI} characters to use semantic search.`,
-            })
             return
         }
 
         if (keywordHits.length >= KEYWORD_RESULTS_BEFORE_PHI) {
-            await showToast({
-                style: Toast.Style.Success,
-                title: "Keyword Results Already Found",
-                message: "Semantic search is only needed when keyword results are scarce.",
-            })
             return
         }
 
@@ -178,7 +183,7 @@ export default function Command() {
             const cachedHits = semanticHitsCache.current.get(query)
             if (cachedHits) {
                 setSemanticHits(cachedHits)
-                if (semanticToastCache.current.get(query) !== cachedHits.length) {
+                if (prefs.showSuccessToasts !== false && semanticToastCache.current.get(query) !== cachedHits.length) {
                     semanticToastCache.current.set(query, cachedHits.length)
                     await showToast({
                         style: Toast.Style.Success,
@@ -190,14 +195,15 @@ export default function Command() {
             }
 
             const keywordIds = new Set(keywordHits.map(n => noteIdFromPath(notesFolder, n.path)))
+            const checkCap = Number.isFinite(maxPhiChecks) && maxPhiChecks > 0 ? maxPhiChecks : DEFAULT_MAX_PHI_CHECKS
             const candidates = allNotes
                 .filter(n => !keywordIds.has(noteIdFromPath(notesFolder, n.path)))
-                .slice(0, MAX_PHI_CHECKS)
+                .slice(0, checkCap)
 
             const hits: string[] = []
             for (const note of candidates) {
                 if (semanticRunId.current !== runId) return
-                if (hits.length >= MAX_SEMANTIC_HITS) break
+                if (hits.length >= maxHits) break
 
                 const candidateId = noteIdFromPath(notesFolder, note.path)
                 const cacheKey = `${query}\n${candidateId}`
@@ -217,7 +223,7 @@ export default function Command() {
                         },
                     }
 
-                    relevant = await runPhiRelevance(request)
+                    relevant = await runPhiRelevance(request, prefs.ensureModelReady !== false)
                     relevanceCache.current.set(cacheKey, relevant)
                 }
 
@@ -228,19 +234,17 @@ export default function Command() {
             semanticHitsCache.current.set(query, hits)
             setSemanticHits(hits)
 
-            semanticToastCache.current.set(query, hits.length)
-            await showToast({
-                style: Toast.Style.Success,
-                title: "Semantic Matches Found",
-                message: `Found ${hits.length} match(es).`,
-            })
+            if (prefs.showSuccessToasts !== false) {
+                semanticToastCache.current.set(query, hits.length)
+                await showToast({
+                    style: Toast.Style.Success,
+                    title: "Semantic Matches Found",
+                    message: `Found ${hits.length} match(es).`,
+                })
+            }
         } catch (err) {
             if (semanticRunId.current !== runId) return
-            await showToast({
-                style: Toast.Style.Failure,
-                title: "Semantic Search Failed",
-                message: err instanceof Error ? err.message : String(err),
-            })
+            await showPhiFailureToast("Semantic Search Failed", err)
         } finally {
             if (semanticRunId.current === runId) setIsSemanticLoading(false)
         }
@@ -255,10 +259,10 @@ export default function Command() {
         const handle = setTimeout(() => {
             // Fire-and-forget; runSemanticSearch has its own guards and cancellation via semanticRunId.
             void runSemanticSearch()
-        }, SEMANTIC_DEBOUNCE_MS)
+        }, debounceMs)
 
         return () => clearTimeout(handle)
-    }, [isSemanticLoading, keywordHits.length, searchText])
+    }, [isSemanticLoading, keywordHits.length, searchText, debounceMs])
 
     return (
         <List

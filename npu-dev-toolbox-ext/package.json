@@ -128,6 +128,32 @@
                 { "title": "Conventional Commits", "value": "conventional" },
                 { "title": "Plain", "value": "plain" }
             ]
+        },
+        {
+            "name": "showSuccessToasts",
+            "title": "Show Success Toasts",
+            "description": "When enabled, shows a success toast after creating a commit or opening a workspace.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Show success notifications"
+        },
+        {
+            "name": "ensureModelReady",
+            "title": "Ensure AI Model Ready",
+            "description": "When enabled, calls EnsureReadyAsync before AI operations to avoid 'NotReady' errors.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Wait for AI model readiness"
+        },
+        {
+            "name": "foregroundDetectionTimeoutMs",
+            "title": "Workspace Detection Timeout (ms)",
+            "description": "Maximum time to wait for PowerShell foreground-window probes (Commit Message / active folder detection).",
+            "type": "textfield",
+            "required": false,
+            "default": "20000"
         }
     ],
     "dependencies": {

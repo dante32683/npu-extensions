@@ -1,4 +1,15 @@
-import { List, ActionPanel, Action, Alert, Icon, open, showToast, Toast, confirmAlert } from "@raycast/api"
+import {
+    List,
+    ActionPanel,
+    Action,
+    Alert,
+    Icon,
+    open,
+    showToast,
+    Toast,
+    confirmAlert,
+    getPreferenceValues,
+} from "@raycast/api"
 import { useEffect, useState, useMemo } from "react"
 import path from "path"
 import fs from "fs"
@@ -8,7 +19,12 @@ import { getNotesFolder, getAllNotes, Note } from "./utils/note-utils"
 
 const execFileAsync = promisify(execFile)
 
+interface Preferences {
+    showSuccessToasts?: boolean
+}
+
 export default function Command() {
+    const prefs = getPreferenceValues<Preferences>()
     const [notes, setNotes] = useState<Note[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchText, setSearchText] = useState("")
@@ -93,11 +109,14 @@ export default function Command() {
 
             await moveToRecycleBin(note.path)
             setNotes(prev => prev.filter(n => n.path !== note.path))
-            await showToast({
-                style: Toast.Style.Success,
-                title: "Note Deleted",
-                message: path.basename(note.path),
-            })
+
+            if (prefs.showSuccessToasts !== false) {
+                await showToast({
+                    style: Toast.Style.Success,
+                    title: "Note Deleted",
+                    message: path.basename(note.path),
+                })
+            }
         } catch (err) {
             await showToast({
                 style: Toast.Style.Failure,

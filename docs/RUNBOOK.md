@@ -82,11 +82,13 @@ To list related registrations: `Get-AppxPackage | Where-Object { $_.Name -match 
 
 Use for on-device text generation when the feature is backed by `Microsoft.Windows.AI.Text.LanguageModel`:
 
-1. `LanguageModel.GetReadyState()` / `EnsureReadyAsync()` as needed.
+1. `LanguageModel.GetReadyState()` — treat **`DisabledByUser`** and **`NotSupportedOnCurrentSystem`** as hard failures with a clear message; call **`EnsureReadyAsync()`** when **`NotReady`** (AI Dev Gallery pattern). Suite bridges centralize this in **`EnsurePhiLanguageModelReadyAsync`**.
 2. `await using` / `using var model = await LanguageModel.CreateAsync()`.
 3. `using var ctx = model.CreateContext(systemPrompt);`
-4. `await model.GenerateResponseAsync(ctx, userText, new LanguageModelOptions());`
-5. Read **`LanguageModelResponseResult.Text`**.
+4. `var response = await model.GenerateResponseAsync(ctx, userText, new LanguageModelOptions());` (do not `using`/dispose **`LanguageModelResponseResult`** unless your SDK version implements `IDisposable`).
+5. Read **`response.Text`**.
+
+**Suite convention (roadmap §1):** Raycast prefs **`ensureModelReady`** (default on) append argv **`--ensure-ready`** to the bridge; the C# entrypoint calls **`EnsureReadyAsync`** only when that flag is set and **`GetReadyState()`** is not **`Ready`**. Normative background: **`docs/REWRITE_INFO.md`**.
 
 **API gotcha:** `CreateContext(string, …)` — second parameter is **`ContentFilterOptions`**, not user text. Wrong usage → CS1503.
 
@@ -98,8 +100,8 @@ Use for on-device text generation when the feature is backed by `Microsoft.Windo
 
 When working in **`npu-image-editor-ext/bridge/Program.cs`**:
 
-- **Background removal** — `ImageObjectExtractor` readiness → mask → alpha via pixel buffer access; watch CsWinRT/COM casting issues. (Older Microsoft docs / drafts call this `ImageForegroundExtractor`; the WAS 2.0-experimental class shipped under the `ImageObjectExtractor` name.)
-- **Super resolution** — `ImageScaler` readiness; respect scale limits per OS/hardware.
+- **Background removal** — `ImageObjectExtractor` readiness → mask → alpha via pixel buffer access; watch CsWinRT/COM casting issues. (Older Microsoft docs / drafts call this `ImageForegroundExtractor`; the WAS 2.0-experimental class shipped under the `ImageObjectExtractor` name.) Optional argv **`--ensure-ready`** matches the suite LanguageModel pattern.
+- **Super resolution** — `ImageScaler` readiness; respect scale limits per OS/hardware. Same **`--ensure-ready`** flag.
 - **OCR** — `SoftwareBitmap` → **Bgra8** for `OcrEngine`; dimension limits per docs.
 
 ## Key file patterns (not a full inventory)
@@ -164,7 +166,31 @@ dotnet publish -c Release -r win-x64 --self-contained true -o ..\assets\bin
 
 Policy note:
 
-- Keep Phi bridges aligned on the **same** Windows App SDK package line where possible. Mixing stable vs experimental can change which AI/Text runtime gets bundled into `assets/bin`.
+- **`npu-notes-ext`** uses **`Microsoft.WindowsAppSDK` 2.0.0-experimental4** (historical Phi-Silica line for this bridge). Other Phi bridges use **`2.0.1`** without **`Microsoft.WindowsAppSDK.AI`**. **`npu-image-editor-ext`** uses **`2.0.1` + `Microsoft.WindowsAppSDK.AI`**. Mixing outputs under `assets/bin` between extensions causes confusing runtime failures — always publish from the matching `csproj` and wipe stale DLLs before republish.
+
+### Phi-Silica Limited Access Feature (`TryUnlockFeature`) — **VERIFIED**
+
+Microsoft documents **`LanguageModel`** as a **Limited Access Feature** with ID **`com.microsoft.windows.ai.languagemodel`**. Accessing this API requires a successful call to **`LimitedAccessFeatures.TryUnlockFeature`** before any model initialization.
+
+**Critical Discovery (2026-05-10):**
+Previous attempts at manual token calculation failed because standard Windows security documentation implies **UTF-16LE** (Unicode) encoding. However, the AI/LanguageModel feature **requires UTF-8** encoding for the hash input string. Using the wrong encoding results in `Status: 0` (Unavailable/Access Denied).
+
+**Standard Suite Implementation (verified 2026-05-10):**
+All Phi-powered bridges (`npu-text-tools-ext`, `npu-notes-ext`, `npu-dev-toolbox-ext`, `npu-awake-ext`) include a `TryUnlockNpuFeature()` method that performs dynamic unlock at runtime. This removes the need for manual `LAF_TOKEN` environment variables. Canonical reference: `npu-text-tools-ext/bridge/Program.cs`. In `npu-dev-toolbox-ext` the call is scoped inside `PhiCommit()` — `cwd-of-pid` does not use LanguageModel. When adding a new Phi bridge, copy this method verbatim and call it before the first `LanguageModel.GetReadyState()`.
+
+1.  **Registry Lookup**: Reads the LAF Key from `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModel\LimitedAccessFeatures\com.microsoft.windows.ai.languagemodel`.
+2.  **Identity Resolution**: Detects the current process **Package Family Name (PFN)**.
+3.  **Token Calculation**: 
+    - `input = "featureId!lafKey!pfn"`
+    - `hash = SHA256(UTF8_Bytes(input))`
+    - `token = Base64(hash.Take(16))`
+4.  **Attestation**: `"[PublisherID] has registered their use of [featureId] with Microsoft and agrees to the terms of use."`
+
+**Interpreting LAF Results:**
+- **`Available` (1)** or **`AvailableWithoutToken` (2)**: Success.
+- **`Unavailable` (0)**: Access Denied. Usually caused by incorrect token calculation (check encoding!), mismatched PFN, or missing `systemAIModels` capability.
+- **`Unknown` (3)**: Feature ID not found in registry (check if your Windows build supports the NPU APIs).
+
 
 ### Windows Terminal (`wt.exe`) launches the “wrong” shell/profile (Dev Toolbox)
 

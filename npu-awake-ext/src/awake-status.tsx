@@ -1,4 +1,4 @@
-import { List, Icon, ActionPanel, Action, Color } from "@raycast/api"
+import { List, Icon, ActionPanel, Action, Color, getPreferenceValues, showToast, Toast } from "@raycast/api"
 import { useEffect, useState } from "react"
 import { getKeeperStatus, KeeperStatus, setOverride } from "./utils/keeper-utils"
 
@@ -28,7 +28,12 @@ function formatDays(days: number[]) {
         .join(", ")
 }
 
+interface Prefs {
+    showSuccessToasts?: boolean
+}
+
 export default function Command() {
+    const prefs = getPreferenceValues<Prefs>()
     const [status, setStatus] = useState<KeeperStatus>({ daemonPid: null, override: null, schedules: [] })
     const [isLoading, setIsLoading] = useState(true)
 
@@ -76,6 +81,12 @@ export default function Command() {
                                 onAction={async () => {
                                     await setOverride(null)
                                     setStatus(await getKeeperStatus())
+                                    if (prefs.showSuccessToasts !== false) {
+                                        await showToast({
+                                            style: Toast.Style.Success,
+                                            title: "Manual keep-awake cleared",
+                                        })
+                                    }
                                 }}
                             />
                         </ActionPanel>

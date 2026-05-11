@@ -45,6 +45,11 @@ internal static class Program
                 return 1;
             }
 
+            if (!TryUnlockNpuFeature())
+            {
+                Console.Error.WriteLine("[NpuAwakeBridge] Warning: LAF unlock was not successful, but proceeding.");
+            }
+
             if (LanguageModel.GetReadyState() != AIFeatureReadyState.Ready)
             {
                 Console.Error.WriteLine("[NpuAwakeBridge] Phi-Silica model not ready — downloading model weights...");
@@ -101,8 +106,7 @@ Rules:
 
 Return JSON only. No markdown fences. No explanation.";
 
-        using var ctx = model.CreateContext(systemPrompt);
-        var response = await model.GenerateResponseAsync(ctx, userText, new LanguageModelOptions());
+        var response = await model.GenerateResponseAsync($"{systemPrompt}\n\nUser request: {userText}");
 
         string raw = response.Text ?? "";
         string json = ExtractJsonObject(raw);
@@ -122,6 +126,46 @@ Return JSON only. No markdown fences. No explanation.";
         if (start == -1 || end == -1 || end <= start)
             throw new Exception($"Failed to extract JSON object from model output: {text}");
         return text.Substring(start, end - start + 1).Trim();
+    }
+
+    private static bool TryUnlockNpuFeature()
+    {
+        try
+        {
+            string featureId = "com.microsoft.windows.ai.languagemodel";
+
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey($@"SOFTWARE\Microsoft\Windows\CurrentVersion\AppModel\LimitedAccessFeatures\{featureId}");
+            string? lafKey = key?.GetValue("")?.ToString();
+
+            if (string.IsNullOrEmpty(lafKey))
+            {
+                Console.Error.WriteLine($"[NpuAwakeBridge] Could not find LAF key for {featureId} in registry.");
+                return false;
+            }
+
+            string pfn = Windows.ApplicationModel.Package.Current.Id.FamilyName;
+
+            string input = $"{featureId}!{lafKey}!{pfn}";
+            byte[] inputBytes = System.Text.Encoding.UTF8.GetBytes(input);
+            byte[] hashBytes = System.Security.Cryptography.SHA256.HashData(inputBytes);
+            byte[] truncatedHash = new byte[16];
+            System.Array.Copy(hashBytes, truncatedHash, 16);
+            string token = Convert.ToBase64String(truncatedHash);
+
+            string publisherId = pfn.Split('_')[1];
+            string attestation = $"{publisherId} has registered their use of {featureId} with Microsoft and agrees to the terms of use.";
+
+            var result = Windows.ApplicationModel.LimitedAccessFeatures.TryUnlockFeature(featureId, token, attestation);
+            Console.Error.WriteLine($"[NpuAwakeBridge] LAF Unlock Result: {result.Status} (Feature: {featureId}, PFN: {pfn})");
+
+            return result.Status == Windows.ApplicationModel.LimitedAccessFeatureStatus.Available ||
+                   result.Status == Windows.ApplicationModel.LimitedAccessFeatureStatus.AvailableWithoutToken;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[NpuAwakeBridge] LAF Unlock Error: {ex.Message}");
+            return false;
+        }
     }
 
     private static void WriteJson(object payload)

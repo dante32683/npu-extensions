@@ -44,6 +44,35 @@
             "mode": "view"
         }
     ],
+    "preferences": [
+        {
+            "name": "prefillFromClipboard",
+            "title": "Prefill From Clipboard",
+            "description": "When enabled, text tools pre-fill with clipboard text on launch.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Prefill with clipboard text"
+        },
+        {
+            "name": "showSuccessToasts",
+            "title": "Show Success Toasts",
+            "description": "When enabled, shows a success toast after a rewrite operation.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Show success notifications"
+        },
+        {
+            "name": "ensureModelReady",
+            "title": "Ensure AI Model Ready",
+            "description": "When enabled, calls EnsureReadyAsync before AI operations to avoid 'NotReady' errors.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Wait for AI model readiness"
+        }
+    ],
     "dependencies": {
         "@raycast/api": "^1.71.0"
     },

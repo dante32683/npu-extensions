@@ -1,3 +1,4 @@
+import { getPreferenceValues } from "@raycast/api"
 import { execFile } from "child_process"
 import { promisify } from "util"
 import fs from "fs"
@@ -7,6 +8,13 @@ import { runDevBridge } from "./run-bridge"
 import { getForegroundExplorerPath, getAllExplorerPaths } from "./explorer"
 
 const execFileAsync = promisify(execFile)
+
+function powershellExecOptions(): { windowsHide: true; timeout: number } {
+    const p = getPreferenceValues<{ foregroundDetectionTimeoutMs?: string }>()
+    const ms = parseInt(p.foregroundDetectionTimeoutMs ?? "20000", 10)
+    const timeout = Number.isFinite(ms) && ms > 0 ? ms : 20000
+    return { windowsHide: true, timeout }
+}
 
 export type DetectedSource =
     | "argument"
@@ -129,7 +137,7 @@ async function getForegroundProcess(): Promise<ForegroundProc | null> {
         const { stdout } = await execFileAsync(
             "powershell.exe",
             ["-NoProfile", "-NonInteractive", "-Command", SCRIPT_GET_FOREGROUND_PROCESS],
-            { windowsHide: true },
+            powershellExecOptions(),
         )
         const json = stdout.trim()
         if (!json) return null
@@ -147,7 +155,7 @@ async function findChildShellPid(parentPid: number): Promise<number | null> {
         const { stdout } = await execFileAsync(
             "powershell.exe",
             ["-NoProfile", "-NonInteractive", "-Command", SCRIPT_GET_CHILD_SHELL, "-ParentPid", String(parentPid)],
-            { windowsHide: true },
+            powershellExecOptions(),
         )
         const json = stdout.trim()
         if (!json) return null

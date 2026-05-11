@@ -1,5 +1,5 @@
 /* eslint-disable @raycast/prefer-title-case */
-import { Action, ActionPanel, Form, Icon, Toast, showToast } from "@raycast/api"
+import { Action, ActionPanel, Form, Icon, Toast, showToast, getPreferenceValues, open } from "@raycast/api"
 import fs from "fs"
 import path from "path"
 import { useEffect, useState } from "react"
@@ -8,7 +8,13 @@ import { SelectedFile, getSelectedExplorerFiles } from "./utils/powershell-utils
 import { runNpuCommand } from "./utils/run-npu-command"
 import { encodeRgbaToWebp } from "./utils/webp-encoder"
 
+interface Preferences {
+    autoOpenResult?: boolean
+    showSuccessToasts?: boolean
+}
+
 export default function Command() {
+    const prefs = getPreferenceValues<Preferences>()
     const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
@@ -89,11 +95,19 @@ export default function Command() {
             const outBytes = await encodeRgbaToWebp(rgba, image.bitmap.width, image.bitmap.height)
             await fs.promises.writeFile(finalOutputPath, outBytes)
 
-            toast.style = Toast.Style.Success
-            toast.title = "Make Sticker Complete"
-            toast.message = subjectDetected
-                ? `Saved to ${outputFileName}.`
-                : `No clear subject detected — center crop used. Saved to ${outputFileName}.`
+            if (prefs.showSuccessToasts !== false) {
+                toast.style = Toast.Style.Success
+                toast.title = "Make Sticker Complete"
+                toast.message = subjectDetected
+                    ? `Saved to ${outputFileName}.`
+                    : `No clear subject detected — center crop used. Saved to ${outputFileName}.`
+            } else {
+                await toast.hide()
+            }
+
+            if (prefs.autoOpenResult) {
+                await open(finalOutputPath)
+            }
         } catch (error: unknown) {
             toast.style = Toast.Style.Failure
             toast.title = "Make Sticker Failed"

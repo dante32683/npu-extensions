@@ -26,6 +26,11 @@ const BRIDGE_IDENTITY = "NpuAwakeBridge.Identity"
 
 interface Preferences {
     showLidNote: boolean
+    showSuccessToasts?: boolean
+    ensureModelReady?: boolean
+    defaultScheduleStart?: string
+    defaultScheduleEnd?: string
+    defaultScheduleDays?: string
 }
 
 type Intent = {
@@ -57,7 +62,7 @@ function parseHmToTodayEpoch(hm: string): number | null {
     return Math.floor(target.getTime() / 1000)
 }
 
-async function runIntentExtractor(userText: string): Promise<Intent> {
+async function runIntentExtractor(userText: string, ensureReady: boolean): Promise<Intent> {
     if (!fs.existsSync(BRIDGE_PATH)) {
         throw new Error("NPU bridge not found. Publish the awake bridge to assets/bin and register it.")
     }
@@ -71,10 +76,23 @@ async function runIntentExtractor(userText: string): Promise<Intent> {
     const tempFile = path.join(os.tmpdir(), `awake-intent-${Date.now()}.txt`)
     fs.writeFileSync(tempFile, userText, "utf8")
     try {
-        const { stdout } = await execFileAsync(BRIDGE_PATH, ["awake-intent", tempFile], {
+        const args = ["awake-intent", tempFile]
+        if (ensureReady) args.push("--ensure-ready")
+
+        const { stdout } = await execFileAsync(BRIDGE_PATH, args, {
             cwd: path.dirname(BRIDGE_PATH),
             windowsHide: true,
             maxBuffer: 10 * 1024 * 1024,
+        }).catch((err: unknown) => {
+            const raw = (err as { stdout?: string }).stdout ?? ""
+            try {
+                const j = JSON.parse(raw.trim())
+                if (j.message) throw new Error(j.message)
+            } catch (e) {
+                if (e instanceof SyntaxError) throw err
+                throw e
+            }
+            throw err
         })
         const parsed = JSON.parse(stdout.trim())
         if (parsed.status !== "success") throw new Error(parsed.message ?? "Unknown bridge error")
@@ -93,7 +111,8 @@ interface Arguments {
 }
 
 export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
-    const { showLidNote } = getPreferenceValues<Preferences>()
+    const prefs = getPreferenceValues<Preferences>()
+    const { showLidNote } = prefs
     const defaultText = props.arguments.text ?? ""
     const lidNote = showLidNote ? "Note: lid close behavior depends on Windows power settings." : undefined
 
@@ -114,55 +133,79 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
             // Always check current status first (tool-first pattern).
             await getKeeperStatus()
 
-            const intent = await runIntentExtractor(input)
+            const intent = await runIntentExtractor(input, prefs.ensureModelReady !== false)
 
             if (intent.action === "help") {
-                toast.style = Toast.Style.Success
-                toast.title = "Try:"
-                toast.message =
-                    '"keep awake", "keep awake for 90 minutes", "until 17:30", "weekdays 09:00-17:00", "stop schedules".'
+                if (prefs.showSuccessToasts !== false) {
+                    toast.style = Toast.Style.Success
+                    toast.title = "Try:"
+                    toast.message =
+                        '"keep awake", "keep awake for 90 minutes", "until 17:30", "weekdays 09:00-17:00", "stop schedules".'
+                } else {
+                    await toast.hide()
+                }
                 return
             }
 
             if (intent.action === "status") {
                 const s = await getKeeperStatus()
-                toast.style = Toast.Style.Success
-                toast.title = s.override
-                    ? `Awake: ${s.override.mode}`
-                    : s.schedules.length > 0
-                      ? "Schedules configured"
-                      : "Not keeping awake"
-                toast.message = 'Use "Awake Status" for details.'
+                if (prefs.showSuccessToasts !== false) {
+                    toast.style = Toast.Style.Success
+                    toast.title = s.override
+                        ? `Awake: ${s.override.mode}`
+                        : s.schedules.length > 0
+                          ? "Schedules configured"
+                          : "Not keeping awake"
+                    toast.message = 'Use "Awake Status" for details.'
+                } else {
+                    await toast.hide()
+                }
                 return
             }
 
             if (intent.action === "stop") {
                 await setOverride(null)
-                toast.style = Toast.Style.Success
-                toast.title = "PC can now sleep"
+                if (prefs.showSuccessToasts !== false) {
+                    toast.style = Toast.Style.Success
+                    toast.title = "PC can now sleep"
+                } else {
+                    await toast.hide()
+                }
                 return
             }
 
             if (intent.action === "unschedule") {
                 await setSchedules([])
-                toast.style = Toast.Style.Success
-                toast.title = "Schedules Cleared"
+                if (prefs.showSuccessToasts !== false) {
+                    toast.style = Toast.Style.Success
+                    toast.title = "Schedules Cleared"
+                } else {
+                    await toast.hide()
+                }
                 return
             }
 
             if (intent.action === "start") {
                 if (intent.mode === "indefinite") {
                     await setOverride({ mode: "indefinite" })
-                    toast.style = Toast.Style.Success
-                    toast.title = "PC Will Stay Awake Indefinitely"
-                    toast.message = lidNote
+                    if (prefs.showSuccessToasts !== false) {
+                        toast.style = Toast.Style.Success
+                        toast.title = "PC Will Stay Awake Indefinitely"
+                        toast.message = lidNote
+                    } else {
+                        await toast.hide()
+                    }
                     return
                 }
 
                 if (intent.mode === "screen-off") {
                     await setOverride({ mode: "screen-off" })
-                    toast.style = Toast.Style.Success
-                    toast.title = "PC awake, display can sleep"
+                    if (prefs.showSuccessToasts !== false) {
+                        toast.style = Toast.Style.Success
+                        toast.title = "PC awake, display can sleep"
+                    } else {
+                        await toast.hide()
+                    }
                     return
                 }
 
@@ -175,9 +218,13 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
                     const seconds = Math.floor(value * (unit === "hours" ? 3600 : 60))
                     const expiry = Math.floor(Date.now() / 1000) + seconds
                     await setOverride({ mode: "timed", expiryEpochSeconds: expiry })
-                    toast.style = Toast.Style.Success
-                    toast.title = `PC Will Stay Awake for ${value} ${unit}`
-                    toast.message = lidNote
+                    if (prefs.showSuccessToasts !== false) {
+                        toast.style = Toast.Style.Success
+                        toast.title = `PC Will Stay Awake for ${value} ${unit}`
+                        toast.message = lidNote
+                    } else {
+                        await toast.hide()
+                    }
                     return
                 }
 
@@ -188,9 +235,13 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
                     if (!target) throw new Error('Invalid time format. Use "HH:mm" like 17:30.')
                     if (target <= Math.floor(Date.now() / 1000)) throw new Error("That time is in the past (today).")
                     await setOverride({ mode: "until", expiryEpochSeconds: target })
-                    toast.style = Toast.Style.Success
-                    toast.title = `PC Will Stay Awake Until ${hm}`
-                    toast.message = lidNote
+                    if (prefs.showSuccessToasts !== false) {
+                        toast.style = Toast.Style.Success
+                        toast.title = `PC Will Stay Awake Until ${hm}`
+                        toast.message = lidNote
+                    } else {
+                        await toast.hide()
+                    }
                     return
                 }
 
@@ -198,9 +249,15 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
             }
 
             if (intent.action === "schedule") {
-                const days = (intent.days ?? []).map(dayStrToDow).filter((d): d is number => d !== null)
-                const start = intent.start
-                const end = intent.end
+                let days = (intent.days ?? []).map(dayStrToDow).filter((d): d is number => d !== null)
+                const fallbackDays = (prefs.defaultScheduleDays ?? "")
+                    .split(/[,\s]+/)
+                    .map(s => dayStrToDow(s.trim()))
+                    .filter((d): d is number => d !== null)
+                if (days.length === 0 && fallbackDays.length > 0) days = fallbackDays
+
+                const start = intent.start?.trim() || prefs.defaultScheduleStart?.trim() || null
+                const end = intent.end?.trim() || prefs.defaultScheduleEnd?.trim() || null
                 if (days.length === 0 || !start || !end) {
                     throw new Error("Missing schedule fields. Try: “weekdays 09:00 to 17:00”.")
                 }
@@ -208,9 +265,13 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
                 const id = `sched_${Date.now()}`
                 const next = [{ id, enabled: true, days, start, end }]
                 await setSchedules(next)
-                toast.style = Toast.Style.Success
-                toast.title = "Schedule Saved"
-                toast.message = `${start}-${end} on ${days.length} day(s)`
+                if (prefs.showSuccessToasts !== false) {
+                    toast.style = Toast.Style.Success
+                    toast.title = "Schedule Saved"
+                    toast.message = `${start}-${end} on ${days.length} day(s)`
+                } else {
+                    await toast.hide()
+                }
                 return
             }
         } catch (err: unknown) {

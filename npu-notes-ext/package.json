@@ -49,6 +49,48 @@
             "required": false,
             "default": false,
             "label": "Prefill Add Note with clipboard text"
+        },
+        {
+            "name": "semanticSearchDebounce",
+            "title": "Semantic Search Debounce (ms)",
+            "description": "Wait time before starting a semantic fallback search while typing.",
+            "type": "textfield",
+            "required": false,
+            "default": "600"
+        },
+        {
+            "name": "maxSemanticChecks",
+            "title": "Max Semantic Candidate Checks",
+            "description": "When keyword matches are scarce, at most this many notes are evaluated with Phi (caps NPU calls).",
+            "type": "textfield",
+            "required": false,
+            "default": "30"
+        },
+        {
+            "name": "maxSemanticResults",
+            "title": "Max Semantic Results",
+            "description": "Maximum number of notes to return from a semantic search match.",
+            "type": "textfield",
+            "required": false,
+            "default": "5"
+        },
+        {
+            "name": "showSuccessToasts",
+            "title": "Show Success Toasts",
+            "description": "When enabled, shows a success toast after saving or deleting a note.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Show success notifications"
+        },
+        {
+            "name": "ensureModelReady",
+            "title": "Ensure AI Model Ready",
+            "description": "When enabled, calls EnsureReadyAsync before AI operations to avoid 'NotReady' errors.",
+            "type": "checkbox",
+            "required": false,
+            "default": true,
+            "label": "Wait for AI model readiness"
         }
     ],
     "dependencies": {

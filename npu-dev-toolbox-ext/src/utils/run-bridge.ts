@@ -1,4 +1,4 @@
-import { environment } from "@raycast/api"
+import { environment, getPreferenceValues } from "@raycast/api"
 import { execFile } from "child_process"
 import { promisify } from "util"
 import path from "path"
@@ -28,6 +28,10 @@ export type DevToolboxBridgeResult = {
 
 export type DevToolboxOutcome = { ok: true; result: DevToolboxBridgeResult } | { ok: false; error: string }
 
+interface Preferences {
+    ensureModelReady?: boolean
+}
+
 // Spawns the dev-toolbox bridge. Returns ok/error rather than throwing so the
 // React UI layer can render a Toast.Style.Failure without ever surfacing a raw
 // exception to the user.
@@ -43,7 +47,13 @@ export async function runDevBridge(command: string, args: string[]): Promise<Dev
             manifestSourcePath: BRIDGE_MANIFEST_SOURCE,
         })
 
-        const { stdout, stderr } = await execFileAsync(BRIDGE_PATH, [command, ...args], {
+        const prefs = getPreferenceValues<Preferences>()
+        const finalArgs = [command, ...args]
+        if (prefs.ensureModelReady !== false && command === "phi-commit") {
+            finalArgs.push("--ensure-ready")
+        }
+
+        const { stdout, stderr } = await execFileAsync(BRIDGE_PATH, finalArgs, {
             cwd: path.dirname(BRIDGE_PATH),
             windowsHide: true,
             maxBuffer: 10 * 1024 * 1024,
@@ -57,6 +67,13 @@ export async function runDevBridge(command: string, args: string[]): Promise<Dev
     } catch (err: unknown) {
         const code = (err as NodeJS.ErrnoException | undefined)?.code
         if (code === "UNKNOWN") return { ok: false, error: BRIDGE_SPAWN_HINT }
+        const rawStdout = (err as { stdout?: string }).stdout ?? ""
+        try {
+            const j = JSON.parse(rawStdout.trim()) as { message?: string }
+            if (j.message) return { ok: false, error: j.message }
+        } catch {
+            // stdout wasn't JSON; fall through to raw error
+        }
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
 }

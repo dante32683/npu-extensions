@@ -8,6 +8,8 @@ publish/
 # Build outputs
 dist/
 assets/bin/
+# Bridge publish output (WinUI / Windows App SDK); local only
+**/bridge/..assetsbin/
 assets/webp/
 *.exe
 *.dll

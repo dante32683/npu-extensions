@@ -1,4 +1,14 @@
-import { Action, ActionPanel, Clipboard, Form, Icon, Toast, environment, showToast } from "@raycast/api"
+import {
+    Action,
+    ActionPanel,
+    Clipboard,
+    Form,
+    Icon,
+    Toast,
+    environment,
+    showToast,
+    getPreferenceValues,
+} from "@raycast/api"
 import { useEffect, useState } from "react"
 import { execFile } from "child_process"
 import { promisify } from "util"
@@ -14,6 +24,12 @@ const BRIDGE_MANIFEST_SOURCE = path.join(environment.assetsPath, "..", "bridge",
 const BRIDGE_IDENTITY = "NpuTextToolsBridge.Identity"
 
 type Mode = "grammar" | "formal" | "concise" | "bullets" | "simplify" | "custom"
+
+interface Preferences {
+    prefillFromClipboard?: boolean
+    showSuccessToasts?: boolean
+    ensureModelReady?: boolean
+}
 
 type TextRewriteCommandProps = {
     mode: Mode
@@ -33,11 +49,18 @@ export function TextRewriteCommand({
     textPlaceholder,
     requiresInstruction = false,
 }: TextRewriteCommandProps) {
+    const prefs = getPreferenceValues<Preferences>()
     const [defaultText, setDefaultText] = useState<string>("")
     const [isLoadingClipboard, setIsLoadingClipboard] = useState(true)
     const [result, setResult] = useState<string | null>(null)
 
     useEffect(() => {
+        if (prefs.prefillFromClipboard === false) {
+            setDefaultText("")
+            setIsLoadingClipboard(false)
+            return
+        }
+
         Clipboard.readText()
             .then(text => setDefaultText(text ?? ""))
             .catch(() => setDefaultText(""))
@@ -92,17 +115,36 @@ export function TextRewriteCommand({
                 manifestSourcePath: BRIDGE_MANIFEST_SOURCE,
             })
 
-            const { stdout } = await execFileAsync(BRIDGE_PATH, ["phi-rewrite", mode, tempFile], {
+            const args = ["phi-rewrite", mode, tempFile]
+            if (prefs.ensureModelReady !== false) {
+                args.push("--ensure-ready")
+            }
+
+            const { stdout } = await execFileAsync(BRIDGE_PATH, args, {
                 cwd: path.dirname(BRIDGE_PATH),
                 windowsHide: true,
                 maxBuffer: 10 * 1024 * 1024,
+            }).catch((err: unknown) => {
+                const raw = (err as { stdout?: string }).stdout ?? ""
+                try {
+                    const j = JSON.parse(raw.trim()) as { message?: string }
+                    if (j.message) throw new Error(j.message)
+                } catch (e) {
+                    if (e instanceof SyntaxError) throw err
+                    throw e
+                }
+                throw err
             })
 
             const parsed = JSON.parse(stdout.trim())
             if (parsed.status !== "success") throw new Error(parsed.message ?? "Unknown bridge error")
 
-            toast.style = Toast.Style.Success
-            toast.title = "Done"
+            if (prefs.showSuccessToasts !== false) {
+                toast.style = Toast.Style.Success
+                toast.title = "Done"
+            } else {
+                await toast.hide()
+            }
             setResult(parsed.result)
         } catch (err: unknown) {
             toast.style = Toast.Style.Failure

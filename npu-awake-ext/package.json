@@ -132,6 +132,38 @@
       "default": "60"
     },
     {
+      "name": "defaultUntilTime",
+      "title": "Default Until Time",
+      "description": "Pre-filled time for Awake Until (HH:mm) when opened without an argument.",
+      "type": "textfield",
+      "required": false,
+      "default": "17:00"
+    },
+    {
+      "name": "defaultScheduleStart",
+      "title": "Default Schedule Start (Smart Awake)",
+      "description": "When Smart Awake parses a schedule without a start time, use this HH:mm.",
+      "type": "textfield",
+      "required": false,
+      "default": "09:00"
+    },
+    {
+      "name": "defaultScheduleEnd",
+      "title": "Default Schedule End (Smart Awake)",
+      "description": "When Smart Awake parses a schedule without an end time, use this HH:mm.",
+      "type": "textfield",
+      "required": false,
+      "default": "17:00"
+    },
+    {
+      "name": "defaultScheduleDays",
+      "title": "Default Schedule Days (Smart Awake)",
+      "description": "Comma-separated weekdays when the model omits days: mon,tue,wed,thu,fri,sat,sun.",
+      "type": "textfield",
+      "required": false,
+      "default": "mon,tue,wed,thu,fri"
+    },
+    {
       "name": "showLidNote",
       "title": "Lid Close Note",
       "description": "Show a note about lid-close / power-button behavior on success toasts.",
@@ -139,6 +171,25 @@
       "required": false,
       "default": false,
       "label": "Show lid close note on success"
+    },
+    {
+      "name": "showSuccessToasts",
+      "title": "Show Success Toasts",
+      "description": "When enabled, shows a success toast after an awake operation.",
+      "type": "checkbox",
+      "required": false,
+      "default": true,
+      "label": "Show success notifications"
+    },
+    {
+      "name": "ensureModelReady",
+      "title": "Ensure AI Model Ready",
+      "description": "When enabled, calls EnsureReadyAsync before AI operations to avoid 'NotReady' errors.",
+      "type": "checkbox",
+      "required": false,
+      "default": true,
+      "label": "Wait for AI model readiness"
     }
   ]
 }
+

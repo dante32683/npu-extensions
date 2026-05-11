@@ -13,6 +13,7 @@ import { setOverride } from "./utils/keeper-utils"
 interface Preferences {
     defaultDuration: string
     showLidNote: boolean
+    showSuccessToasts?: boolean
 }
 
 interface Arguments {
@@ -20,7 +21,8 @@ interface Arguments {
 }
 
 export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
-    const { defaultDuration, showLidNote } = getPreferenceValues<Preferences>()
+    const prefs = getPreferenceValues<Preferences>()
+    const { defaultDuration, showLidNote } = prefs
     const { pop } = useNavigation()
     const { duration } = props.arguments
 
@@ -41,11 +43,13 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
 
         const expiry = Math.floor(Date.now() / 1000) + mins * 60
         await setOverride({ mode: "timed", expiryEpochSeconds: expiry })
-        await showToast({
-            style: Toast.Style.Success,
-            title: `PC Will Stay Awake for ${mins} Minute(s)`,
-            message: lidNote,
-        })
+        if (prefs.showSuccessToasts !== false) {
+            await showToast({
+                style: Toast.Style.Success,
+                title: `PC Will Stay Awake for ${mins} Minute(s)`,
+                message: lidNote,
+            })
+        }
         pop()
     }
 
@@ -53,13 +57,15 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>) {
         const mins = parseInt(duration)
         if (!isNaN(mins) && mins > 0) {
             const expiry = Math.floor(Date.now() / 1000) + mins * 60
-            void setOverride({ mode: "timed", expiryEpochSeconds: expiry }).then(() =>
-                showToast({
-                    style: Toast.Style.Success,
-                    title: `PC Will Stay Awake for ${mins} Minute(s)`,
-                    message: lidNote,
-                }),
-            )
+            void setOverride({ mode: "timed", expiryEpochSeconds: expiry }).then(() => {
+                if (prefs.showSuccessToasts !== false) {
+                    void showToast({
+                        style: Toast.Style.Success,
+                        title: `PC Will Stay Awake for ${mins} Minute(s)`,
+                        message: lidNote,
+                    })
+                }
+            })
             return null
         }
     }
